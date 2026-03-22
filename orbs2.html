@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rotating Gap Ball Simulation</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+      color: #eee;
+      font-family: system-ui, sans-serif;
+    }
+    #wrapper {
+      text-align: center;
+    }
+    #counter {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    canvas {
+      background: #000;
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    }
+  </style>
+</head>
+<body>
+  <div id="wrapper">
+    <div id="counter">Balls count: 0</div>
+    <canvas id="sim" width="900" height="900"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('sim');
+    const ctx = canvas.getContext('2d');
+    const counterEl = document.getElementById('counter');
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const cx = W / 2;
+    const cy = H / 2;
+    const R = 260;
+
+    const BALL_RADIUS = 10;
+    const INITIAL_BALLS = 1;
+    const GRAVITY = 0.05;
+
+    // Gap = 1/5 of circumference
+    const GAP_FRACTION = 1 / 5;
+    const GAP_ANGLE = GAP_FRACTION * Math.PI * 2;
+
+    let rotationAngle = 0;       // rotation of the whole circle
+    const ROTATION_SPEED = 0.01; // radians per frame
+
+    const balls = [];
+
+    function randomColor() {
+      const r = Math.floor(Math.random() * 200 + 30);
+      const g = Math.floor(Math.random() * 200 + 30);
+      const b = Math.floor(Math.random() * 200 + 30);
+      return `rgb(${r},${g},${b})`;
+    }
+
+    function randomInCircle(radius) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(Math.random()) * (radius - BALL_RADIUS);
+      return {
+        x: cx + r * Math.cos(angle),
+        y: cy + r * Math.sin(angle)
+      };
+    }
+
+    function randomVelocity() {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1 + Math.random() * 1.5;
+      return {
+        vx: speed * Math.cos(angle),
+        vy: speed * Math.sin(angle)
+      };
+    }
+
+    function createBall() {
+      const pos = randomInCircle(R);
+      const vel = randomVelocity();
+      balls.push({
+        x: pos.x,
+        y: pos.y,
+        vx: vel.vx,
+        vy: vel.vy,
+        r: BALL_RADIUS,
+        color: randomColor(),
+        falling: false
+      });
+      updateCounter();
+    }
+
+    function updateCounter() {
+      counterEl.textContent = 'Balls count: ' + balls.length;
+    }
+
+    for (let i = 0; i < INITIAL_BALLS; i++) createBall();
+
+    // Check if angle is inside the rotating gap
+    function isAngleInGap(angle) {
+      const start = rotationAngle;
+      const end = rotationAngle + GAP_ANGLE;
+
+      // Normalize angle to [0, 2π)
+      angle = (angle + Math.PI * 2) % (Math.PI * 2);
+
+      if (start < end) {
+        return angle >= start && angle <= end;
+      } else {
+        return angle >= start || angle <= end;
+      }
+    }
+
+    function handleWallCollision(ball) {
+        if (ball.falling) return "falling"; // NEW
+
+        const dx = ball.x - cx;
+        const dy = ball.y - cy;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < R - ball.r) return "inside";
+
+        const angle = Math.atan2(dy, dx);
+
+        if (isAngleInGap(angle)) {
+        return "escaped";
+        }
+
+        // bounce
+        const nx = dx / dist;
+        const ny = dy / dist;
+
+        ball.x = cx + nx * (R - ball.r);
+        ball.y = cy + ny * (R - ball.r);
+
+        const dot = ball.vx * nx + ball.vy * ny;
+        ball.vx -= 2 * dot * nx;
+        ball.vy -= 2 * dot * ny;
+
+        return "bounced";
+    }
+
+    function update() {
+        rotationAngle += ROTATION_SPEED;
+        rotationAngle %= Math.PI * 2;
+
+        for (let i = balls.length - 1; i >= 0; i--) {
+            const b = balls[i];
+
+            // gravity always applies
+            b.vy += GRAVITY;
+            b.x += b.vx;
+            b.y += b.vy;
+
+            // if ball is falling, ignore collisions
+            if (b.falling) {
+            // remove only after leaving screen
+            if (b.y - b.r > H) {
+                balls.splice(i, 1);
+                createBall();
+                createBall();
+                createBall();
+            }
+            continue;
+            }
+
+            const result = handleWallCollision(b);
+
+            if (result === "escaped") {
+            // mark ball as falling instead of removing it
+            b.falling = true;
+            b.vx = 0; // optional: vertical drop only
+            }
+        }
+    }
+
+    function drawRotatingCircle() {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rotationAngle);
+      ctx.translate(-cx, -cy);
+
+      // Draw full circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.strokeStyle = "#555";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Cut out the gap
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.arc(cx, cy, R + 2, 0, GAP_ANGLE);
+      ctx.lineWidth = 20;
+      ctx.stroke();
+
+      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
+    }
+
+    function drawBalls() {
+      for (const b of balls) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fillStyle = b.color;
+        ctx.fill();
+      }
+    }
+
+    function loop() {
+      ctx.clearRect(0, 0, W, H);
+      drawRotatingCircle();
+      update();
+      drawBalls();
+      updateCounter();
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+  </script>
+</body>
+</html>
