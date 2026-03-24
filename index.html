@@ -12,6 +12,8 @@
     fetch("https://api.github.com/repos/November7/AIFunLab/contents/")
       .then(r => r.json())
       .then(files => {
+        console.log(files);
+
         const ul = document.getElementById("lista");
         files
           .filter(f => f.name.endsWith(".html") && f.name !== "index.html")
