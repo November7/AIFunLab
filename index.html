@@ -13,31 +13,47 @@
   <style>
     /* --- DARK MODE --- */
     @media (prefers-color-scheme: dark) {
-        body {
-            background: #0d1117;
-            color: #c9d1d9;
+        .markdown-body {
+            background-color: #161b22 !important;
+            color: #c9d1d9 !important;
         }
 
-        #readme {
-            background: #161b22;
-            border-color: #30363d;
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3,
+        .markdown-body h4,
+        .markdown-body h5,
+        .markdown-body h6 {
+            color: #c9d1d9 !important;
         }
 
-        #lista li {
-            background: #161b22;
-            border-color: #30363d;
+        .markdown-body a {
+            color: #58a6ff !important;
         }
 
-        #lista li:hover {
-            box-shadow: 0 4px 12px rgba(255,255,255,0.08);
+        .markdown-body code {
+            background-color: #0d1117 !important;
+            color: #c9d1d9 !important;
         }
 
-        #lista a {
-            color: #58a6ff;
+        .markdown-body pre {
+            background-color: #0d1117 !important;
+            color: #c9d1d9 !important;
+            border-color: #30363d !important;
         }
 
-        h1 {
-            color: #c9d1d9;
+        .markdown-body table {
+            color: #c9d1d9 !important;
+        }
+
+        .markdown-body tr {
+            background-color: #161b22 !important;
+            border-color: #30363d !important;
+        }
+
+        .markdown-body td,
+        .markdown-body th {
+            border-color: #30363d !important;
         }
     }
 
