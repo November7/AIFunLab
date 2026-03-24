@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Pac-Man</title>
+<style>
+  body {
+    background: #000;
+    color: #fff;
+    font-family: Arial;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px;
+  }
+  #game {
+    display: grid;
+    grid-template-columns: repeat(19, 40px);
+    grid-template-rows: repeat(21, 40px);
+    border: 3px solid #00f;
+    background: #000;
+  }
+  .cell { width: 40px; height: 40px; position: relative; }
+  .wall { background: #0011aa; }
+  .dot::after {
+    content:""; width:6px; height:6px; border-radius:50%;
+    background:#ffb8ae; position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+  }
+  .power::after {
+    content:""; width:12px; height:12px; border-radius:50%;
+    background:#fff; position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+  }
+  .pacman::after {
+    content:""; width:26px; height:26px; border-radius:50%;
+    background:#ff0; position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+  }
+  .ghost::after {
+    content:""; width:26px; height:26px; border-radius:50% 50% 0 0;
+    background:#f00; position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+  }
+  .ghost.blue::after { background:#00f; }
+  #scoreBox { margin:10px; font-size:24px; }
+  #msg { margin-top:10px; font-size:26px; height:30px; }
+</style>
+</head>
+<body>
+
+<h1>Pac‑Man</h1>
+<div id="scoreBox">Punkty: <span id="score">0</span></div>
+<div id="game"></div>
+<div id="msg"></div>
+
+<script>
+/*
+  MAPA 19×21
+  1 = ściana
+  2 = kropka
+  3 = power
+  0 = puste
+*/
+
+let ghostDelay = 180; // 3 sekundy
+
+const layout = [
+"1111111111111111111",
+"1222222221112222221",
+"1211111121112111111",
+"1311111121112111131",
+"1222222222222222221",
+"1211112111112111121",
+"1222222111112222221",
+"1111112111112111111",
+"1000012000002100001",
+"1111112000002111111",
+"1222222000002222221",
+"1211112111112111121",
+"1222222111112222221",
+"1211112111112111121",
+"1222222222222222221",
+"1311111121112111131",
+"1211111121112111111",
+"1222222221112222221",
+"1111111111111111111",
+"1000000000000000001",
+"1000000000000000001"
+];
+
+const rows = layout.length;
+const cols = layout[0].length;
+
+const game = document.getElementById("game");
+const scoreSpan = document.getElementById("score");
+const msg = document.getElementById("msg");
+
+let cells = [];
+let score = 0;
+let dotsLeft = 0;
+
+let pacman = { r: 10, c: 9, dr: 0, dc: 0, nextDr: 0, nextDc: 0 };
+let ghost = { r: 8, c: 9, dr: 0, dc: 0 };
+
+let tick = 0;
+let gameOver = false;
+let power = false;
+let powerTimer = 0;
+
+function buildBoard() {
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const div = document.createElement("div");
+      div.classList.add("cell");
+      const ch = layout[r][c];
+      if (ch === "1") div.classList.add("wall");
+      if (ch === "2") { div.classList.add("dot"); dotsLeft++; }
+      if (ch === "3") { div.classList.add("power"); dotsLeft++; }
+      game.appendChild(div);
+      cells.push(div);
+    }
+  }
+}
+
+function idx(r,c){ return r*cols+c; }
+function isWall(r,c){
+  if(r<0||r>=rows||c<0||c>=cols) return true;
+  return layout[r][c]==="1";
+}
+
+window.addEventListener("keydown", e=>{
+  if(e.code==="ArrowUp") pacman.nextDr=-1, pacman.nextDc=0;
+  if(e.code==="ArrowDown") pacman.nextDr=1, pacman.nextDc=0;
+  if(e.code==="ArrowLeft") pacman.nextDr=0, pacman.nextDc=-1;
+  if(e.code==="ArrowRight") pacman.nextDr=0, pacman.nextDc=1;
+});
+
+function movePacman(){
+  const nr = pacman.r + pacman.nextDr;
+  const nc = pacman.c + pacman.nextDc;
+  if(!isWall(nr,nc)){
+    pacman.dr = pacman.nextDr;
+    pacman.dc = pacman.nextDc;
+  }
+
+  const tr = pacman.r + pacman.dr;
+  const tc = pacman.c + pacman.dc;
+  if(!isWall(tr,tc)){
+    pacman.r = tr;
+    pacman.c = tc;
+  }
+
+  const cell = cells[idx(pacman.r,pacman.c)];
+  if(cell.classList.contains("dot")){
+    cell.classList.remove("dot");
+    score+=10; dotsLeft--;
+  }
+  if(cell.classList.contains("power")){
+    cell.classList.remove("power");
+    score+=50; dotsLeft--;
+    power=true; powerTimer=300;
+  }
+  scoreSpan.textContent=score;
+
+  if(dotsLeft===0){
+    msg.textContent="Wygrana!";
+    gameOver=true;
+  }
+}
+
+function moveGhost() {
+  const dirs = [
+    { dr: -1, dc: 0 },
+    { dr: 1, dc: 0 },
+    { dr: 0, dc: -1 },
+    { dr: 0, dc: 1 }
+  ];
+
+  // sortowanie preferencji (ucieczka lub pogoń)
+  dirs.sort((a, b) => {
+    const da = Math.abs((ghost.r + a.dr) - pacman.r) + Math.abs((ghost.c + a.dc) - pacman.c);
+    const db = Math.abs((ghost.r + b.dr) - pacman.r) + Math.abs((ghost.c + b.dr) - pacman.c);
+    return power ? db - da : da - db;
+  });
+
+  // wybierz pierwszy możliwy kierunek
+  for (const d of dirs) {
+    const nr = ghost.r + d.dr;
+    const nc = ghost.c + d.dc;
+    if (!isWall(nr, nc)) {
+      ghost.r = nr;
+      ghost.c = nc;
+      return;
+    }
+  }
+
+  // jeśli wszystkie były ścianami → losowy kierunek
+  const free = dirs.filter(d => !isWall(ghost.r + d.dr, ghost.c + d.dc));
+  if (free.length > 0) {
+    const d = free[Math.floor(Math.random() * free.length)];
+    ghost.r += d.dr;
+    ghost.c += d.dc;
+  }
+}
+
+function draw(){
+  cells.forEach(c=>c.classList.remove("pacman","ghost","blue"));
+  cells[idx(pacman.r,pacman.c)].classList.add("pacman");
+  const g = cells[idx(ghost.r,ghost.c)];
+  g.classList.add("ghost");
+  if(power) g.classList.add("blue");
+}
+
+function checkCollision(){
+  if(pacman.r===ghost.r && pacman.c===ghost.c){
+    if(power){
+      score+=200;
+      scoreSpan.textContent=score;
+      ghost.r=8; ghost.c=9;
+    } else {
+      msg.textContent="Przegrana!";
+      gameOver=true;
+    }
+  }
+}
+function loop(){
+  if(gameOver) return;
+  tick++;
+
+  // Pac-Man wolniej
+  if(tick % 9 === 0) movePacman(); 
+
+  // Duch dopiero po odliczeniu
+  if (ghostDelay > 0) {
+      ghostDelay--;
+  } else {
+      if (tick % 21 === 0) {
+          moveGhost();
+      }
+  }
+
+  checkCollision();
+
+  if(power){
+    powerTimer--;
+    if(powerTimer<=0) power=false;
+  }
+
+  draw();
+  requestAnimationFrame(loop);
+}
+
+buildBoard();
+draw();
+loop();
+</script>
+</body>
+</html>
