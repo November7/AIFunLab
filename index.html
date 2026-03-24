@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>AIFunLab – gry i animacje</title>
+
+  <!-- GitHub-style markdown CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
+
+  <!-- Markdown parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
@@ -18,6 +25,21 @@
       margin-bottom: 30px;
       font-size: 2.2em;
       font-weight: 600;
+    }
+
+    /* README container */
+    #readme {
+      max-width: 900px;
+      margin: 0 auto 40px auto;
+      padding: 24px;
+      background: white;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+    }
+
+    /* GitHub markdown style wrapper */
+    .markdown-body {
+      box-sizing: border-box;
     }
 
     #lista {
@@ -57,11 +79,17 @@
   </style>
 </head>
 <body>
+
   <h1>AIFunLab – Gry i Animacje</h1>
-  <div id="readme"></div>
+
+  <!-- README container -->
+  <div id="readme" class="markdown-body"></div>
+
+  <!-- Lista gier -->
   <ul id="lista"></ul>
 
   <script>
+    // --- Lista gier ---
     fetch("https://api.github.com/repos/November7/AIFunLab/contents/")
       .then(r => r.json())
       .then(files => {
@@ -84,12 +112,13 @@
           });
       });
 
-      fetch("https://raw.githubusercontent.com/November7/AIFunLab/main/README.md")
-    .then(r => r.text())
-    .then(md => {
-      document.getElementById("readme").innerHTML = marked.parse(md);
-    });
-
+    // --- README ---
+    fetch("https://raw.githubusercontent.com/November7/AIFunLab/main/README.md")
+      .then(r => r.text())
+      .then(md => {
+        document.getElementById("readme").innerHTML = marked.parse(md);
+      });
   </script>
+
 </body>
 </html>
