@@ -1,17 +1,29 @@
-<script>
-fetch("https://api.github.com/repos/November7/AIFunLab/contents/")
-  .then(r => r.json())
-  .then(files => {
-    const ul = document.getElementById("lista");
-    files
-      .filter(f => f.name.endsWith(".html") && f.name !== "index.html")
-      .forEach(f => {
-        const li = document.createElement("li");
-        const a = document.createElement("a");
-        a.href = f.name;
-        a.textContent = f.name.replace(".html", "");
-        li.appendChild(a);
-        ul.appendChild(li);
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>AIFunLab – gry i animacje</title>
+</head>
+<body>
+  <h1>Gry i animacje</h1>
+  <ul id="lista"></ul>
+
+  <script>
+    fetch("https://api.github.com/repos/November7/AIFunLab/contents/")
+      .then(r => r.json())
+      .then(files => {
+        const ul = document.getElementById("lista");
+        files
+          .filter(f => f.name.endsWith(".html") && f.name !== "index.html")
+          .forEach(f => {
+            const li = document.createElement("li");
+            const a = document.createElement("a");
+            a.href = f.name;
+            a.textContent = f.name.replace(".html", "");
+            li.appendChild(a);
+            ul.appendChild(li);
+          });
       });
-  });
-</script>
+  </script>
+</body>
+</html>
