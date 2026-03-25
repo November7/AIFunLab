@@ -1,0 +1,7 @@
+Wersja 1 [PL]:
+
+1. inne zadanie, chociaż podobne. założenia interfejsu takie same. okrąg jest niepełny - z brakującym odcinkiem okręgu (szczeliną) o długości 1/5 obwodu. kulka wewnątrz również się odbija o krawędź okręgu. jeżeli natomiast wypadnie, na jej miejsce pojawiają się 3 nowe wewnątrz okręgu.
+2. nie widzę szczeliny. dodatkowo okrąg (a więc szczelina) ma się obracać
+3. kulka wypadająca powinna spadać na dół strony (znikać dopiero po wyjściu poza ekran)
+4. kulki znikają po wyjściu poza czarne tło (nie widać ich już)
+5. ale może być sytuacja, że szczelina jest u góry, kulki się odbijają, i w wyniku odbicia kulka wylatuje do góry poza okrąg, ale zdąży wrócić zanim szczelina jej ucieknie.... wtedy też nie powinna być traktowana jako wypadnięta :)

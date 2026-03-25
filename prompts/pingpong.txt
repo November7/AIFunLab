@@ -1,0 +1,3 @@
+Versja 1 [PL]:
+1. wygeneruj grę html + css + js w jednym pliku - typowy pingpong - kalka pierwszej gry komputerowej. pingpong ma być w poziomie, po lewej komputer po prawej gracz. gracz gra klawiaturą (sztrzałki góra dół). opcja dla dwóch graczy: W/S kontra Up/Down.
+2. uzupełnij żeby pod spodem były dużej wielkości punkty np. 1:0. gra kończy się przy ustalonym limicie np. w polu tekstowym u góry

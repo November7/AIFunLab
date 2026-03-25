@@ -1,0 +1,2 @@
+Wersja 1 [pl]:
+1. czy jesteś w stanie wygenerować grę saper w html + css + js wszystko w jednym pliku?

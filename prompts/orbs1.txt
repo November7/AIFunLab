@@ -1,0 +1,6 @@
+Wersja 1 [PL]:
+
+1. czy jesteś w stanie wygenerować stronę internetową z animacją (js/svg/canvas) polegającą na tym że na początku w okręgu są dwa małe kółka/kulki, które są upuszczane z dowolnej wysokości (z wnętrza okręgu) i odbijają się bezstratnie od krawędzi okręgu. gdy się zderzą pojawia się w losowym miejscu kolejne kółko i tak bez końca. nad okręgiem powinien być licznik aktualnej ilości kółek
+2. dwie poprawki, kulki powinny być w losowym kolorze, a ruch bardziej grawitacyjny ale bez strat
+3. mała modyfikacja: kulki powinny się pojawiać powyżej środka okręgu
+4. kolejna zmiana, chodzi o to żeby skrypt zakończył działanie jak okrąg zostanie wypełniony w całości kulkami. oprócz licznika kulek dodaj czas trwania animacji i go zatrzymaj jak okrąg się wypełni

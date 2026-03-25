@@ -1,0 +1,7 @@
+Wersja 1 [PL]:
+1. PacMAN - html + css + js, jeden plik - kalka oryginału
+2. gra nie działa (wygląd ok, mogła by być 2x większa). od razu zaczyna od- przegrałeś
+3. zarówno duch jak i kulka lądują w dolnej części. tu jest problem. ruch kulki (pacmana) i duchów za szybki
+4. znacznie lepiej - ale pacman zaczynał na niebieskim polu (w ścianie). ruch pacmana i ducha nadal za szybki, no i najważniejsze, nie ma kropek do zjadania
+5. kropki są, pacman chodzi, ale duch stoi w środku i nie chodzi
+6. jest już prawie ok, duch jest zdecydowanie za blisko podczas startu gry, a pacman nadal jest za szybki
