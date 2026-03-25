@@ -1,0 +1,3 @@
+Wersja 1 [PL]:
+
+1. wygeneruj stronę z animacją taką jak w Matrix: spadające znacznik konsoli w zielonym kolorze. HTML + CSS + js w jednym pliku.
