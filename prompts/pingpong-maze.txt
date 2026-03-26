@@ -1,2 +1,20 @@
 Wersja 1 <div PL="
 1. Napisz animację (HTML, CSS, JS, SVG/canvas, wszystko w jednym pliku) polegającej na tym że jest narysowanych kilka centrycznych okręgów oraz linii pokrywającymi się z promieniami największego okręgu. zarówno linie jak i okręgi nie są pełne, tworząc labirynt w okręgach. w środku jest obszar startowy kilku (np) 5 piłeczek pingpongowych o różnych kolorach, które startują ze stałą prędkością ale w losowym kierunku. piłki mogą być stosunkowo małe np 5x5 px (ważne żeby były okrągłe). piłki zderzają się ze sobą i ze ścianami bezstratnie. celem jest znalezienie drogi wyjściowej przez którąkolwiek z piłek. animacja kończy się gdy któraś z piłek wyjdzie z labiryntu. u góry powinien być licznik czasu który zaczyma się po opuszczeniu labiryntu. musi istniec przynajmniej jedna droga wyjściowa. labirynt nie musi generować się dynamicznie, może być zawsze taki sam."></div>
+2. konieczne poprawki: wszystkie ściany labiryntu muszą być białe, labirynt musi być gęściej pokryty ścianami (więcej okręgów i więcej ścian działowych - to nie muszą być ciągle linie, to mogą być odcinki zamykające przejścia pomiędzy okręgami. okręgi powinny być niepełne np mieć kilka brakujących łuków. piłki muszą poruszać się szybciej
+Propozycje Copilota:
+Opcja A — „gęsty labirynt kołowy” (bardziej regularny)
+10–14 koncentrycznych okręgów
+każdy okrąg ma 2–4 przerwy (losowe lub stałe)
+między okręgami są krótkie odcinki blokujące przejścia
+całość wygląda jak klasyczny „circular maze”
+ściany: 100% białe
+piłki: szybsze, np. 200–250 px/s
+
+Opcja B — „chaotyczny labirynt kołowy” (bardziej organiczny)
+okręgi o nieregularnych przerwach
+dużo krótkich białych segmentów w różnych miejscach
+bardziej „pokręcony” układ
+
+wizualnie przypomina labirynt z korzeni lub pęknięć
+3. Opcja B.
+4. Na podstawie wielkości okna przeglądarki przeskaluj labirynt tak żeby się mieścił na stronie w całości. bug: piłki potrafią przyklejać się do ścian (jedna kulka byla jednocześnie po obydwu stronach ściany i przeskakiwała między stronami z maksymalną prędkością) inna przykleiła się do okręgu i się poruszała po nim aż znalazła przerwę. przygotuj poprawioną wersję
