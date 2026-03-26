@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8" />
-<title>Centryczny labirynt z piłkami</title>
+<title>Centryczny Labirynt – poprawiona wersja</title>
 <style>
   html, body {
     margin: 0;
@@ -49,9 +49,6 @@
   const rings = [];
   const ringGaps = [];
   const radialWalls = [];
-
-  let exitGap;
-  let exitRadius;
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -105,69 +102,39 @@
     const step = 40;
 
     for (let i = 0; i < ringCount; i++) {
-      const R = (baseR + i * step) * scale;
-      rings.push(R);
+      rings.push((baseR + i * step) * scale);
     }
 
-    // Główna ścieżka "wijąca się" przez pierścienie (w radianach)
-    // Każdy pierścień ma co najmniej jedną przerwę częściowo zachodzącą na poprzednią
+    // Główna ścieżka spiralna – różne kąty na każdym pierścieniu
+    ringGaps.push([{ start: -0.2, end: 0.2 }]);          // R0
+    ringGaps.push([{ start:  0.1, end: 0.5 }]);          // R1
+    ringGaps.push([{ start:  0.4, end: 0.8 }]);          // R2
+    ringGaps.push([{ start:  0.9, end: 1.3 }]);          // R3
+    ringGaps.push([{ start:  1.2, end: 1.6 }]);          // R4
+    ringGaps.push([{ start:  1.5, end: 1.9 }]);          // R5
+
+    // Ostatni pierścień – wiele wyjść (czarne, niewidoczne)
     ringGaps.push([
-      { start: -0.3, end: 0.3 },          // R0
-      { start:  2.4, end: 2.9 }          // dodatkowa przerwa
-    ]);
-    ringGaps.push([
-      { start:  0.1, end: 0.7 },         // R1
-      { start: -2.4, end: -2.0 }
-    ]);
-    ringGaps.push([
-      { start:  0.6, end: 1.2 },         // R2
-      { start: -1.8, end: -1.3 }
-    ]);
-    ringGaps.push([
-      { start:  1.1, end: 1.7 },         // R3
-      { start: -0.9, end: -0.4 }
-    ]);
-    ringGaps.push([
-      { start:  1.5, end: 2.1 },         // R4
-      { start:  0.0, end: 0.3 }
-    ]);
-    ringGaps.push([
-      { start:  1.9, end: 2.5 },         // R5
-      { start: -2.8, end: -2.3 }
-    ]);
-    ringGaps.push([
-      { start:  2.2, end: 2.8 },         // R6 (zewnętrzny, wyjście)
-      { start: -1.2, end: -0.8 }
+      { start: 1.8, end: 2.1 },   // wyjście 1
+      { start: -1.2, end: -0.9 }, // wyjście 2
+      { start: 0.4, end: 0.7 }    // wyjście 3
     ]);
 
-    // Ściany działowe: krótkie odcinki między sąsiednimi pierścieniami
-    // Każda ściana jest w jednym "pierścieniu" (między R[i] a R[i+1])
-    const wallDefs = [
-      // ringIndex, angle (radiany)
-      { ring: 0, angle: -Math.PI * 0.75 },
-      { ring: 0, angle:  Math.PI * 0.35 },
-      { ring: 1, angle: -Math.PI * 0.1  },
-      { ring: 1, angle:  Math.PI * 0.9  },
-      { ring: 2, angle: -Math.PI * 0.5  },
-      { ring: 2, angle:  Math.PI * 0.2  },
-      { ring: 3, angle:  Math.PI * 0.75 },
-      { ring: 3, angle: -Math.PI * 0.3  },
-      { ring: 4, angle:  Math.PI * 1.1  },
-      { ring: 4, angle: -Math.PI * 0.9  },
-      { ring: 5, angle:  Math.PI * 0.0  },
-      { ring: 5, angle: -Math.PI * 0.6  }
+    // Ściany działowe – krótkie odcinki w każdym pierścieniu
+    const wallAngles = [
+      -2.4, -1.7, -1.0, -0.3,
+       0.4,  1.1,  1.8,  2.5
     ];
 
-    for (const w of wallDefs) {
-      radialWalls.push({
-        angle: w.angle,
-        r1: rings[w.ring],
-        r2: rings[w.ring + 1]
-      });
+    for (let i = 0; i < rings.length - 1; i++) {
+      for (const a of wallAngles) {
+        radialWalls.push({
+          angle: a + i * 0.25, // lekkie przesunięcie na każdym pierścieniu
+          r1: rings[i],
+          r2: rings[i + 1]
+        });
+      }
     }
-
-    exitGap = ringGaps[ringGaps.length - 1][0]; // pierwsza przerwa w zewnętrznym pierścieniu
-    exitRadius = rings[rings.length - 1];
   }
 
   generateStaticMaze();
@@ -241,7 +208,7 @@
         }
       }
 
-      // kolizje z liniami działowymi (w jednym pierścieniu)
+      // kolizje z liniami działowymi
       for (const w of radialWalls) {
         if (r < w.r1 || r > w.r2) continue;
         const diff = Math.abs(angleNorm(theta - w.angle));
@@ -292,17 +259,16 @@
     const dy = ball.y - cy;
     const r = Math.hypot(dx, dy);
     const th = Math.atan2(dy, dx);
-    if (r > exitRadius + 5) {
-      if (angleInGap(th, [exitGap])) return true;
+    const lastRing = ringGaps.length - 1;
+    if (r > rings[rings.length - 1] + 5) {
+      if (angleInGap(th, ringGaps[lastRing])) return true;
     }
     return false;
   }
 
   function update(dt) {
     if (!running) return;
-    for (const b of balls) {
-      handleBallMaze(b, dt);
-    }
+    for (const b of balls) handleBallMaze(b, dt);
     handleBallBall();
     for (const b of balls) {
       if (checkExit(b)) {
@@ -321,7 +287,7 @@
     ctx.save();
     ctx.translate(cx, cy);
 
-    // pierścienie (łuki ścian)
+    // pierścienie
     for (let i = 0; i < rings.length; i++) {
       const R = rings[i];
       const gaps = ringGaps[i];
@@ -348,20 +314,13 @@
       }
     }
 
-    // ściany działowe w pierścieniach
+    // ściany działowe
     for (const w of radialWalls) {
       ctx.beginPath();
       ctx.moveTo(Math.cos(w.angle) * w.r1, Math.sin(w.angle) * w.r1);
       ctx.lineTo(Math.cos(w.angle) * w.r2, Math.sin(w.angle) * w.r2);
       ctx.stroke();
     }
-
-    // wyjście (zaznaczone na zewnętrznym pierścieniu)
-    ctx.strokeStyle = "#0f0";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(0, 0, exitRadius, exitGap.start, exitGap.end);
-    ctx.stroke();
 
     ctx.restore();
 
