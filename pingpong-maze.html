@@ -29,7 +29,6 @@
 <body>
 
 <div id="hud">Czas: <span id="time">0.000 s</span></div>
-<div> Nieudana próba - kolejne podejście z github copilot pro</div>
 <canvas id="c"></canvas>
 
 <script>
@@ -43,16 +42,19 @@
   let stopTime = null;
   let running = true;
 
-  const ballSpeed = 195;
-  const ballRadius = 5;
-  const numBalls = 5;
+  const BALL_SPEED = 235;
+  const BALL_RADIUS = 5;
+  const NUM_BALLS = 5;
 
   const rings = [];
   const ringGaps = [];
   const radialWalls = [];
 
-  const wallThickness = 8;      // kolizyjna grubość ściany
-  const wallHalf = wallThickness / 2;
+  const WALL_THICKNESS = 10;
+  const WALL_HALF = WALL_THICKNESS / 2;
+  const MAX_STEP_TRAVEL = 1.2;
+  const SOLVER_ITERS = 4;
+  const PUSH_EPS = 0.05;
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -62,10 +64,10 @@
     cx = W / 2;
     cy = H / 2;
 
-    const margin = 40;
-    const ringCount = 7;
-    const baseR = 40;
-    const step = 45;
+    const margin = 36;
+    const ringCount = 6;
+    const baseR = 46;
+    const step = 52;
     const baseMaxRadius = baseR + (ringCount - 1) * step;
     const maxPossibleRadius = Math.min(W, H) / 2 - margin;
     scale = maxPossibleRadius / baseMaxRadius;
@@ -80,6 +82,10 @@
     while (a <= -Math.PI) a += 2 * Math.PI;
     while (a > Math.PI) a -= 2 * Math.PI;
     return a;
+  }
+
+  function angleDelta(a, b) {
+    return angleNorm(a - b);
   }
 
   function angleInGap(theta, gaps) {
@@ -101,43 +107,51 @@
     ringGaps.length = 0;
     radialWalls.length = 0;
 
-    const ringCount = 7;
-    const baseR = 40;
-    const step = 45;
+    const ringCount = 6;
+    const baseR = 46;
+    const step = 52;
 
     for (let i = 0; i < ringCount; i++) {
       rings.push((baseR + i * step) * scale);
     }
 
-    const baseAngle = -0.2;
-    const shift = 0.45;
-
+    const pathAngles = [-2.3, -1.62, -0.9, -0.12, 0.72, 1.58];
+    const pathGapSize = 0.56;
     for (let i = 0; i < ringCount; i++) {
-      const a1 = baseAngle + i * shift;
-      ringGaps.push([
-        { start: a1, end: a1 + 0.35 }
-      ]);
+      const aMain = pathAngles[i];
+      const g = [
+        { start: aMain - pathGapSize / 2, end: aMain + pathGapSize / 2 }
+      ];
+
+      const extraA = angleNorm(aMain + 1.5 - (i % 2) * 0.35);
+      g.push({ start: extraA - 0.18, end: extraA + 0.18 });
+
+      if (i % 2 === 1) {
+        const extraB = angleNorm(aMain - 1.9);
+        g.push({ start: extraB - 0.14, end: extraB + 0.14 });
+      }
+
+      ringGaps.push(g);
     }
 
-    ringGaps[ringCount - 1].push(
-      { start: baseAngle + (ringCount - 1) * shift + 0.5, end: baseAngle + (ringCount - 1) * shift + 0.9 }
-    );
+    ringGaps[ringCount - 1].push({ start: -2.95, end: -2.55 });
 
-    const wallAngles = [-2.4, -1.7, -1.0, -0.3, 0.4, 1.1, 1.8, 2.5];
+    const wallAngles = [];
+    const segmentsPerBand = 14;
+    for (let j = 0; j < segmentsPerBand; j++) {
+      wallAngles.push(-Math.PI + (2 * Math.PI * j) / segmentsPerBand);
+    }
 
     for (let i = 0; i < ringCount - 1; i++) {
-      const gapStart = ringGaps[i][0].start;
-      const gapEnd = ringGaps[i][0].end;
-
       for (const a of wallAngles) {
-        const aa = a + i * 0.3;
-        if (aa < gapStart - 0.2 || aa > gapEnd + 0.2) {
-          radialWalls.push({
-            angle: aa,
-            r1: rings[i],
-            r2: rings[i + 1]
-          });
-        }
+        const aa = angleNorm(a + i * 0.21 + ((i + Math.round((a + Math.PI) * 10)) % 3 === 0 ? 0.08 : -0.06));
+        const d0 = Math.abs(angleDelta(aa, pathAngles[i]));
+        const d1 = Math.abs(angleDelta(aa, pathAngles[i + 1]));
+        if (d0 < 0.48 || d1 < 0.48) continue;
+
+        if (Math.abs(angleDelta(aa, pathAngles[i] + Math.PI)) < 0.18) continue;
+
+        radialWalls.push({ angle: aa, r1: rings[i], r2: rings[i + 1] });
       }
     }
   }
@@ -149,14 +163,14 @@
   function createBalls() {
     balls.length = 0;
     const colors = ["#0ff", "#f0f", "#ff0", "#0f0", "#f00", "#08f"];
-    for (let i = 0; i < numBalls; i++) {
+    for (let i = 0; i < NUM_BALLS; i++) {
       const a = Math.random() * Math.PI * 2;
       balls.push({
-        x: cx + Math.random() * 10 - 5,
-        y: cy + Math.random() * 10 - 5,
-        vx: Math.cos(a) * ballSpeed,
-        vy: Math.sin(a) * ballSpeed,
-        r: ballRadius,
+        x: cx + Math.random() * 12 - 6,
+        y: cy + Math.random() * 12 - 6,
+        vx: Math.cos(a) * BALL_SPEED,
+        vy: Math.sin(a) * BALL_SPEED,
+        r: BALL_RADIUS,
         color: colors[i % colors.length]
       });
     }
@@ -170,100 +184,80 @@
     ball.vy -= 2 * dot * ny;
   }
 
-  function handleBallMaze(ball, dt) {
-    const steps = 24;
-    const stepDt = dt / steps;
+  function resolveRingCollision(ball, R, gaps) {
+    const dx = ball.x - cx;
+    const dy = ball.y - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1e-8) return false;
 
-    for (let s = 0; s < steps; s++) {
-      const oldX = ball.x;
-      const oldY = ball.y;
+    const theta = Math.atan2(dy, dx);
+    if (angleInGap(theta, gaps)) return false;
 
-      ball.x += ball.vx * stepDt;
-      ball.y += ball.vy * stepDt;
+    const limit = WALL_HALF + ball.r;
+    const off = dist - R;
+    if (Math.abs(off) >= limit) return false;
 
-      let dx = ball.x - cx;
-      let dy = ball.y - cy;
-      let r = Math.hypot(dx, dy);
-      let theta = Math.atan2(dx, dy); // uwaga: zamiana, żeby normal był poprawny
+    const sign = off >= 0 ? 1 : -1;
+    const nx = (dx / dist) * sign;
+    const ny = (dy / dist) * sign;
+    const penetration = limit - Math.abs(off) + PUSH_EPS;
 
-      // --- grube pierścienie ---
+    ball.x += nx * penetration;
+    ball.y += ny * penetration;
+
+    const vn = ball.vx * nx + ball.vy * ny;
+    if (vn < 0) reflect(ball, nx, ny);
+    return true;
+  }
+
+  function resolveRadialWallCollision(ball, w) {
+    const ux = Math.cos(w.angle);
+    const uy = Math.sin(w.angle);
+
+    const px = ball.x - cx;
+    const py = ball.y - cy;
+
+    const t = px * ux + py * uy;
+    const clampedT = Math.max(w.r1, Math.min(w.r2, t));
+    const qx = ux * clampedT;
+    const qy = uy * clampedT;
+
+    const dx = px - qx;
+    const dy = py - qy;
+    const dist = Math.hypot(dx, dy);
+    const limit = WALL_HALF + ball.r;
+    if (dist >= limit) return false;
+
+    let nx, ny;
+    if (dist > 1e-8) {
+      nx = dx / dist;
+      ny = dy / dist;
+    } else {
+      nx = -Math.sin(w.angle);
+      ny = Math.cos(w.angle);
+    }
+
+    const penetration = limit - dist + PUSH_EPS;
+    ball.x += nx * penetration;
+    ball.y += ny * penetration;
+
+    const vn = ball.vx * nx + ball.vy * ny;
+    if (vn < 0) reflect(ball, nx, ny);
+    return true;
+  }
+
+  function solveBallWallOverlaps(ball) {
+    for (let iter = 0; iter < SOLVER_ITERS; iter++) {
+      let touched = false;
+
       for (let i = 0; i < rings.length; i++) {
-        const R = rings[i];
-        const inner = R - wallHalf;
-        const outer = R + wallHalf;
-
-        const prevR = Math.hypot(oldX - cx, oldY - cy);
-        const crossed = (prevR - inner) * (r - inner) < 0 || (prevR - outer) * (r - outer) < 0;
-
-        if (crossed && !angleInGap(Math.atan2(ball.y - cy, ball.x - cx), ringGaps[i])) {
-          // odbicie od zewnętrznej powierzchni
-          let targetR;
-          if (r > R) {
-            targetR = outer + ball.r + 0.5;
-          } else {
-            targetR = inner - ball.r - 0.5;
-          }
-
-          const ndx = ball.x - cx;
-          const ndy = ball.y - cy;
-          const len = Math.hypot(ndx, ndy) || 1;
-          const nx = ndx / len;
-          const ny = ndy / len;
-
-          reflect(ball, nx, ny);
-
-          ball.x = cx + nx * targetR;
-          ball.y = cy + ny * targetR;
-
-          dx = ball.x - cx;
-          dy = ball.y - cy;
-          r = Math.hypot(dx, dy);
-          theta = Math.atan2(dx, dy);
-        }
+        if (resolveRingCollision(ball, rings[i], ringGaps[i])) touched = true;
       }
-
-      // --- grube ściany radialne ---
       for (const w of radialWalls) {
-        if (r < w.r1 - wallHalf || r > w.r2 + wallHalf) continue;
-
-        const diff = angleNorm(Math.atan2(ball.y - cy, ball.x - cx) - w.angle);
-        const angTol = (wallHalf + ball.r) / (r || 1);
-
-        if (Math.abs(diff) < angTol) {
-          // normal prostopadły do ściany
-          const nx = Math.cos(w.angle + Math.PI / 2);
-          const ny = Math.sin(w.angle + Math.PI / 2);
-
-          reflect(ball, nx, ny);
-
-          // odsuniecie na zewnątrz "pasa" ściany
-          const sign = diff > 0 ? 1 : -1;
-          const newAngle = w.angle + sign * angTol;
-          ball.x = cx + Math.cos(newAngle) * r;
-          ball.y = cy + Math.sin(newAngle) * r;
-
-          dx = ball.x - cx;
-          dy = ball.y - cy;
-          r = Math.hypot(dx, dy);
-          theta = Math.atan2(dx, dy);
-        }
+        if (resolveRadialWallCollision(ball, w)) touched = true;
       }
 
-      // --- twarda granica zewnętrzna ---
-      const maxR = rings[rings.length - 1] + wallHalf + 5;
-      if (r > maxR) {
-        const ndx = ball.x - cx;
-        const ndy = ball.y - cy;
-        const len = Math.hypot(ndx, ndy) || 1;
-        const nx = ndx / len;
-        const ny = ndy / len;
-
-        reflect(ball, nx, ny);
-
-        const targetR = rings[rings.length - 1] + wallHalf + ball.r + 0.5;
-        ball.x = cx + nx * targetR;
-        ball.y = cy + ny * targetR;
-      }
+      if (!touched) break;
     }
   }
 
@@ -309,24 +303,32 @@
     const dy = ball.y - cy;
     const r = Math.hypot(dx, dy);
     const th = Math.atan2(dy, dx);
-    const lastRing = ringGaps.length - 1;
-
-    if (r > rings[rings.length - 1] + wallHalf + 5) {
-      if (angleInGap(th, ringGaps[lastRing])) return true;
-    }
-    return false;
+    const lastRing = rings.length - 1;
+    return r > rings[lastRing] + WALL_HALF + ball.r + 1 && angleInGap(th, ringGaps[lastRing]);
   }
 
   function update(dt) {
     if (!running) return;
 
-    for (const b of balls) handleBallMaze(b, dt);
-    handleBallBall();
+    const maxSpeed = BALL_SPEED;
+    const steps = Math.max(1, Math.ceil((maxSpeed * dt) / MAX_STEP_TRAVEL));
+    const stepDt = dt / steps;
+
+    for (let s = 0; s < steps; s++) {
+      for (const b of balls) {
+        b.x += b.vx * stepDt;
+        b.y += b.vy * stepDt;
+        solveBallWallOverlaps(b);
+      }
+      handleBallBall();
+      for (const b of balls) solveBallWallOverlaps(b);
+    }
 
     for (const b of balls) {
       if (checkExit(b)) {
         running = false;
         stopTime = performance.now();
+        break;
       }
     }
   }
