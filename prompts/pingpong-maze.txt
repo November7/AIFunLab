@@ -18,3 +18,7 @@ bardziej „pokręcony” układ
 wizualnie przypomina labirynt z korzeni lub pęknięć
 3. Opcja B.
 4. Na podstawie wielkości okna przeglądarki przeskaluj labirynt tak żeby się mieścił na stronie w całości. bug: piłki potrafią przyklejać się do ścian (jedna kulka byla jednocześnie po obydwu stronach ściany i przeskakiwała między stronami z maksymalną prędkością) inna przykleiła się do okręgu i się poruszała po nim aż znalazła przerwę. przygotuj poprawioną wersję
+5. zmniejsz ilość okręgów o połowę linie przecinające generują się zbyt blisko siebie i nie są ustawione równo między okręgami - czasem lina jest z jednej i drugiej strony okręgi, a nie jak ściana zamykająca drogę. to może być statycznie wygenerowany układ labiryntu - to piłki są losowe (ich kierunek i zwrot)
+6. teraz to już nie jest labirynt, linie działowe powinny o długości równej odległości powmiędzy pierścieniami, powinny być w ramach jednego pierścienia (obszar pomiędzy okręgami) a nie jako jedna długa linia do samego końca, wyjścia z pierścieni powinny być w różnych miejscach a nie na linii prostej jak obecnie. czy potrzebujesz rysunku pomocniczego?
+Copilot chce rysunek pomocniczy:
+7. przykład odręczny labiryntu centrycznego.
