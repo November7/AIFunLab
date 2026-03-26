@@ -13,7 +13,7 @@ Prompts are written in a casual, informal style, with moderate precision and wit
 
 Zbiór w pełni generowanych przez AI eksperymentów webowych — animacji, mini‑gier, efektów wizualnych i interaktywnych projektów tworzonych w HTML, CSS i JavaScript. Kreatywna piaskownica prezentująca pomysły, prototypy i zabawne projekty tworzone wyłącznie przez sztuczną inteligencję. Czynnik ludzki ogranicza się jedynie do promptowania, proponowania zmian oraz drobnych korekt w kodzie.
 
-Asystent: Copilot (wersja darmowa w Windows 11)
+Asystent: Copilot (wersja darmowa w Windows 11)  
 Aktualizacja 2026.03.26: Z uwagi na ograniczenia Copilot w wersji Windows 11 (Free), zmiana modelu na Copilot Pro (Github)
 
 Założenia projektowe: maksymalnie 10 promptów (1 prompt zadania i maksymalnie 9 poromptów poprawek). Najlepsza (niekoniecznie ostatnia) wersja zostaje jako ostateczna. Prompty pisane językiem potocznym, swobodnym, średnio precyzyjnym, bez dużej ilości założeń projektowych, czy wskazówek dotyczących poprawek.
