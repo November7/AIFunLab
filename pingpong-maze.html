@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<title>Labirynt kołowy z piłeczkami</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #05060a;
+    color: #f5f5f5;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    height: 100%;
+    overflow: hidden;
+  }
+  #wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  #hud {
+    padding: 8px 16px;
+    background: #111827;
+    border-bottom: 1px solid #1f2933;
+    font-size: 16px;
+    letter-spacing: 0.03em;
+  }
+  #time {
+    font-weight: 600;
+    color: #38bdf8;
+  }
+  #canvas-container {
+    flex: 1;
+    position: relative;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, #020617 0%, #020617 45%, #020617 100%);
+  }
+</style>
+</head>
+<body>
+<div id="wrapper">
+  <div id="hud">
+    Czas: <span id="time">0.000 s</span>
+  </div>
+  <div id="canvas-container">
+    <canvas id="mazeCanvas"></canvas>
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('mazeCanvas');
+  const ctx = canvas.getContext('2d');
+  const timeEl = document.getElementById('time');
+
+  let width, height, cx, cy, scale;
+  let lastTime = 0;
+  let startTime = null;
+  let stopTime = null;
+  let running = true;
+
+  const ballRadius = 5;
+  const ballSpeed = 90; // px/s
+  const numBalls = 5;
+
+  // Koncentryczne okręgi (promienie w pikselach – przeskalujemy)
+  let baseRadii = [60, 100, 140, 180];
+  let radii = [];
+
+  // Dla każdego pierścienia: zakresy kątów (w radianach), które są OTWARTE (przejścia)
+  // Reszta łuku jest ścianą.
+  // Kąty liczone od osi X, przeciwnie do ruchu wskazówek zegara.
+  // Projekt: ciągła ścieżka z centrum do wyjścia w okolicy kąta ~ -90° (w dół).
+  const ringGaps = [
+    // Pierścień 0 (R=60): duże przejście w dół
+    [ { start: -Math.PI * 0.75, end: -Math.PI * 0.25 } ],
+    // Pierścień 1 (R=100): przesunięte przejście
+    [ { start: -Math.PI * 0.6, end: -Math.PI * 0.1 } ],
+    // Pierścień 2 (R=140)
+    [ { start: -Math.PI * 0.55, end: -Math.PI * 0.05 } ],
+    // Pierścień 3 (R=180) – tu jest wyjście na zewnątrz
+    [ { start: -Math.PI * 0.5, end: 0 } ]
+  ];
+
+  // Ściany promieniowe (linie od środka) – każda ma kąt i zakres promieni
+  // Zostawiamy przerwę przy wyjściu (brak ściany w tym kącie).
+  const radialWalls = [
+    { angle: 0.0, rMin: 40, rMax: 190 },
+    { angle: Math.PI * 0.4, rMin: 40, rMax: 190 },
+    { angle: Math.PI * 0.8, rMin: 40, rMax: 190 },
+    { angle: -Math.PI * 0.4, rMin: 40, rMax: 190 },
+    { angle: -Math.PI * 0.9, rMin: 40, rMax: 170 } // nie dochodzi do wyjścia
+  ];
+
+  // Wyjście: poza największym promieniem, w określonym zakresie kątów
+  const exitRadius = 190;
+  const exitGap = { start: -Math.PI * 0.5, end: 0 }; // dół-prawo
+
+  const balls = [];
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    width = canvas.width;
+    height = canvas.height;
+    cx = width / 2;
+    cy = height / 2;
+    scale = Math.min(width, height) / 450; // skalowanie labiryntu
+    radii = baseRadii.map(r => r * scale);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  function rand(min, max) {
+    return min + Math.random() * (max - min);
+  }
+
+  function createBalls() {
+    balls.length = 0;
+    const colors = ['#f97316', '#22c55e', '#3b82f6', '#e11d48', '#a855f7', '#eab308', '#14b8a6'];
+    for (let i = 0; i < numBalls; i++) {
+      const angle = rand(0, Math.PI * 2);
+      const speed = ballSpeed;
+      balls.push({
+        x: cx + rand(-10, 10),
+        y: cy + rand(-10, 10),
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        r: ballRadius,
+        color: colors[i % colors.length]
+      });
+    }
+  }
+
+  createBalls();
+
+  function angleNormalize(a) {
+    while (a <= -Math.PI) a += 2 * Math.PI;
+    while (a > Math.PI) a -= 2 * Math.PI;
+    return a;
+  }
+
+  function angleInGap(theta, gaps) {
+    theta = angleNormalize(theta);
+    for (const g of gaps) {
+      let s = angleNormalize(g.start);
+      let e = angleNormalize(g.end);
+      if (s <= e) {
+        if (theta >= s && theta <= e) return true;
+      } else {
+        // zakres przez -π/π
+        if (theta >= s || theta <= e) return true;
+      }
+    }
+    return false;
+  }
+
+  function reflectRadial(ball, R) {
+    // wektor od środka
+    const dx = ball.x - cx;
+    const dy = ball.y - cy;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+    const dot = ball.vx * nx + ball.vy * ny;
+    ball.vx -= 2 * dot * nx;
+    ball.vy -= 2 * dot * ny;
+
+    // przesuń na powierzchnię
+    const targetR = R + (ball.r + 0.5) * (len > R ? 1 : -1);
+    ball.x = cx + nx * targetR;
+    ball.y = cy + ny * targetR;
+  }
+
+  function reflectTangential(ball, wallAngle) {
+    // normalna prostopadła do ściany promieniowej
+    const nx = Math.cos(wallAngle + Math.PI / 2);
+    const ny = Math.sin(wallAngle + Math.PI / 2);
+    const dot = ball.vx * nx + ball.vy * ny;
+    ball.vx -= 2 * dot * nx;
+    ball.vy -= 2 * dot * ny;
+  }
+
+  function handleBallMazeCollisions(ball, dt) {
+    const dx = ball.x - cx;
+    const dy = ball.y - cy;
+    const r = Math.hypot(dx, dy);
+    let theta = Math.atan2(dy, dx);
+
+    // Kolizje z okręgami (pierścienie)
+    for (let i = 0; i < radii.length; i++) {
+      const R = radii[i];
+      const dist = Math.abs(r - R);
+      if (dist <= ball.r + 0.5) {
+        // sprawdź, czy w tym kącie jest przejście
+        if (!angleInGap(theta, ringGaps[i])) {
+          reflectRadial(ball, R);
+          // zaktualizuj r,theta po odbiciu
+          const ndx = ball.x - cx;
+          const ndy = ball.y - cy;
+          theta = Math.atan2(ndy, ndx);
+        }
+      }
+    }
+
+    // Kolizje z liniami promieniowymi
+    for (const w of radialWalls) {
+      if (r < w.rMin * scale || r > w.rMax * scale) continue;
+      const diff = Math.abs(angleNormalize(theta - w.angle));
+      const angThresh = ball.r / (r || 1);
+      if (diff < angThresh) {
+        reflectTangential(ball, w.angle);
+        // lekkie przesunięcie, by wyjść ze ściany
+        const sign = (theta > w.angle) ? 1 : -1;
+        const newTheta = w.angle + sign * angThresh;
+        ball.x = cx + Math.cos(newTheta) * r;
+        ball.y = cy + Math.sin(newTheta) * r;
+        theta = newTheta;
+      }
+    }
+  }
+
+  function handleBallBallCollisions() {
+    for (let i = 0; i < balls.length; i++) {
+      for (let j = i + 1; j < balls.length; j++) {
+        const a = balls[i];
+        const b = balls[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = a.r + b.r;
+        if (dist > 0 && dist < minDist) {
+          // bezstratne zderzenie kul o tej samej masie
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const dvx = a.vx - b.vx;
+          const dvy = a.vy - b.vy;
+          const relVel = dvx * nx + dvy * ny;
+          if (relVel > 0) continue;
+
+          const impulse = -2 * relVel / 2;
+          const ix = impulse * nx;
+          const iy = impulse * ny;
+
+          a.vx += ix;
+          a.vy += iy;
+          b.vx -= ix;
+          b.vy -= iy;
+
+          // rozepchnij, żeby się nie nakładały
+          const overlap = (minDist - dist) / 2;
+          a.x -= nx * overlap;
+          a.y -= ny * overlap;
+          b.x += nx * overlap;
+          b.y += ny * overlap;
+        }
+      }
+    }
+  }
+
+  function checkExit(ball) {
+    const dx = ball.x - cx;
+    const dy = ball.y - cy;
+    const r = Math.hypot(dx, dy);
+    const theta = Math.atan2(dy, dx);
+    if (r > exitRadius * scale) {
+      if (angleInGap(theta, [exitGap])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function update(dt) {
+    if (!running) return;
+
+    for (const ball of balls) {
+      ball.x += ball.vx * dt;
+      ball.y += ball.vy * dt;
+      handleBallMazeCollisions(ball, dt);
+    }
+
+    handleBallBallCollisions();
+
+    for (const ball of balls) {
+      if (checkExit(ball)) {
+        running = false;
+        stopTime = performance.now();
+        break;
+      }
+    }
+  }
+
+  function drawMaze() {
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // tło "mgiełka"
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(width, height) / 2);
+    g.addColorStop(0, 'rgba(15,23,42,1)');
+    g.addColorStop(1, 'rgba(2,6,23,1)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-width, -height, width * 2, height * 2);
+
+    ctx.lineWidth = 4 * scale;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#1f2937';
+
+    // Okręgi – rysujemy tylko fragmenty, które są ścianami
+    for (let i = 0; i < radii.length; i++) {
+      const R = radii[i];
+      const gaps = ringGaps[i];
+
+      // rysujemy pełny okrąg, ale wycinamy przejścia
+      const segments = [];
+      const step = Math.PI / 64;
+      let currentStart = null;
+      for (let a = -Math.PI; a <= Math.PI + 0.0001; a += step) {
+        const inGap = angleInGap(a, gaps);
+        if (!inGap) {
+          if (currentStart === null) currentStart = a;
+        } else {
+          if (currentStart !== null) {
+            segments.push({ start: currentStart, end: a });
+            currentStart = null;
+          }
+        }
+      }
+      if (currentStart !== null) {
+        segments.push({ start: currentStart, end: Math.PI });
+      }
+
+      ctx.beginPath();
+      for (const s of segments) {
+        ctx.arc(0, 0, R, s.start, s.end, false);
+      }
+      ctx.stroke();
+    }
+
+    // Linie promieniowe
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 3 * scale;
+    for (const w of radialWalls) {
+      const rMin = w.rMin * scale;
+      const rMax = w.rMax * scale;
+      const x1 = Math.cos(w.angle) * rMin;
+      const y1 = Math.sin(w.angle) * rMin;
+      const x2 = Math.cos(w.angle) * rMax;
+      const y2 = Math.sin(w.angle) * rMax;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    // Zaznaczenie wyjścia
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 4 * scale;
+    ctx.beginPath();
+    ctx.arc(0, 0, exitRadius * scale, exitGap.start, exitGap.end, false);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawBalls() {
+    for (const ball of balls) {
+      ctx.beginPath();
+      ctx.fillStyle = ball.color;
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(15,23,42,0.8)';
+      ctx.stroke();
+    }
+  }
+
+  function draw(dt) {
+    ctx.clearRect(0, 0, width, height);
+    drawMaze();
+    drawBalls();
+  }
+
+  function formatTime(ms) {
+    return (ms / 1000).toFixed(3) + ' s';
+  }
+
+  function loop(timestamp) {
+    if (startTime === null) startTime = timestamp;
+    const dt = (timestamp - lastTime) / 1000 || 0;
+    lastTime = timestamp;
+
+    if (running) {
+      update(dt);
+      draw(dt);
+      timeEl.textContent = formatTime(timestamp - startTime);
+      requestAnimationFrame(loop);
+    } else {
+      draw(0);
+      const finalTime = stopTime ?? timestamp;
+      timeEl.textContent = formatTime(finalTime - startTime);
+    }
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
