@@ -79,3 +79,5 @@ Wybierz:
 A) Tak, może być minimalny damping (98%) — stabilniejsze.
 B) Nie, odbicia muszą być w 100% energiczne.
 14. B (kolejny prompt doliczony)
+15. niestety ale teraz powrócił problem z piłkami któr potrafią przenikać przez ścianę i sie do niej przyklejają odbicie powoduje przejście na drugą stronę i z powrotem
+Copilot chyba się zapętlił i obiecuje że wklei kod w następnym komunikacie... chyba game over :)

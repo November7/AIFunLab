@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8" />
-<title>Centryczny Labirynt – stabilna fizyka CCD</title>
+<title>Centryczny Labirynt – grube ściany, stabilna fizyka</title>
 <style>
   html, body {
     margin: 0;
@@ -29,6 +29,7 @@
 <body>
 
 <div id="hud">Czas: <span id="time">0.000 s</span></div>
+<div> Nieudana próba - kolejne podejście z github copilot pro</div>
 <canvas id="c"></canvas>
 
 <script>
@@ -42,13 +43,16 @@
   let stopTime = null;
   let running = true;
 
-  const ballSpeed = 80;     // prędkość B
+  const ballSpeed = 195;
   const ballRadius = 5;
   const numBalls = 5;
 
   const rings = [];
   const ringGaps = [];
   const radialWalls = [];
+
+  const wallThickness = 8;      // kolizyjna grubość ściany
+  const wallHalf = wallThickness / 2;
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -105,7 +109,6 @@
       rings.push((baseR + i * step) * scale);
     }
 
-    // Spiralna ścieżka – gwarantowane przejście
     const baseAngle = -0.2;
     const shift = 0.45;
 
@@ -116,12 +119,10 @@
       ]);
     }
 
-    // Ostatni pierścień – dodatkowe wyjścia
     ringGaps[ringCount - 1].push(
       { start: baseAngle + (ringCount - 1) * shift + 0.5, end: baseAngle + (ringCount - 1) * shift + 0.9 }
     );
 
-    // Ściany działowe – nie blokują spirali
     const wallAngles = [-2.4, -1.7, -1.0, -0.3, 0.4, 1.1, 1.8, 2.5];
 
     for (let i = 0; i < ringCount - 1; i++) {
@@ -163,34 +164,14 @@
 
   createBalls();
 
-  // --- CCD + stabilne odbicia ---
-  function reflectRadial(ball, R) {
-    const dx = ball.x - cx;
-    const dy = ball.y - cy;
-    const len = Math.hypot(dx, dy) || 1;
-    const nx = dx / len;
-    const ny = dy / len;
-
-    const dot = ball.vx * nx + ball.vy * ny;
-    ball.vx -= 2 * dot * nx;
-    ball.vy -= 2 * dot * ny;
-
-    const target = R + (ball.r + 1.2) * (len > R ? 1 : -1);
-    ball.x = cx + nx * target;
-    ball.y = cy + ny * target;
-  }
-
-  function reflectTangential(ball, angle) {
-    const nx = Math.cos(angle + Math.PI / 2);
-    const ny = Math.sin(angle + Math.PI / 2);
-
+  function reflect(ball, nx, ny) {
     const dot = ball.vx * nx + ball.vy * ny;
     ball.vx -= 2 * dot * nx;
     ball.vy -= 2 * dot * ny;
   }
 
   function handleBallMaze(ball, dt) {
-    const steps = 24; // CCD
+    const steps = 24;
     const stepDt = dt / steps;
 
     for (let s = 0; s < steps; s++) {
@@ -200,49 +181,88 @@
       ball.x += ball.vx * stepDt;
       ball.y += ball.vy * stepDt;
 
-      const dx = ball.x - cx;
-      const dy = ball.y - cy;
+      let dx = ball.x - cx;
+      let dy = ball.y - cy;
       let r = Math.hypot(dx, dy);
-      let theta = Math.atan2(dy, dx);
+      let theta = Math.atan2(dx, dy); // uwaga: zamiana, żeby normal był poprawny
 
-      // --- Kolizje z pierścieniami ---
+      // --- grube pierścienie ---
       for (let i = 0; i < rings.length; i++) {
         const R = rings[i];
+        const inner = R - wallHalf;
+        const outer = R + wallHalf;
 
         const prevR = Math.hypot(oldX - cx, oldY - cy);
-        const crossed = (prevR - R) * (r - R) < 0;
+        const crossed = (prevR - inner) * (r - inner) < 0 || (prevR - outer) * (r - outer) < 0;
 
-        if (crossed) {
-          if (!angleInGap(theta, ringGaps[i])) {
-            reflectRadial(ball, R);
-            const ndx = ball.x - cx;
-            const ndy = ball.y - cy;
-            r = Math.hypot(ndx, ndy);
-            theta = Math.atan2(ndy, ndx);
+        if (crossed && !angleInGap(Math.atan2(ball.y - cy, ball.x - cx), ringGaps[i])) {
+          // odbicie od zewnętrznej powierzchni
+          let targetR;
+          if (r > R) {
+            targetR = outer + ball.r + 0.5;
+          } else {
+            targetR = inner - ball.r - 0.5;
           }
+
+          const ndx = ball.x - cx;
+          const ndy = ball.y - cy;
+          const len = Math.hypot(ndx, ndy) || 1;
+          const nx = ndx / len;
+          const ny = ndy / len;
+
+          reflect(ball, nx, ny);
+
+          ball.x = cx + nx * targetR;
+          ball.y = cy + ny * targetR;
+
+          dx = ball.x - cx;
+          dy = ball.y - cy;
+          r = Math.hypot(dx, dy);
+          theta = Math.atan2(dx, dy);
         }
       }
 
-      // --- Kolizje z liniami działowymi ---
+      // --- grube ściany radialne ---
       for (const w of radialWalls) {
-        if (r < w.r1 || r > w.r2) continue;
+        if (r < w.r1 - wallHalf || r > w.r2 + wallHalf) continue;
 
-        const diff = Math.abs(angleNorm(theta - w.angle));
-        const th = ball.r / (r || 1);
+        const diff = angleNorm(Math.atan2(ball.y - cy, ball.x - cx) - w.angle);
+        const angTol = (wallHalf + ball.r) / (r || 1);
 
-        if (diff < th) {
-          reflectTangential(ball, w.angle);
-          const sign = theta > w.angle ? 1 : -1;
-          const newTheta = w.angle + sign * th;
-          ball.x = cx + Math.cos(newTheta) * r;
-          ball.y = cy + Math.sin(newTheta) * r;
+        if (Math.abs(diff) < angTol) {
+          // normal prostopadły do ściany
+          const nx = Math.cos(w.angle + Math.PI / 2);
+          const ny = Math.sin(w.angle + Math.PI / 2);
+
+          reflect(ball, nx, ny);
+
+          // odsuniecie na zewnątrz "pasa" ściany
+          const sign = diff > 0 ? 1 : -1;
+          const newAngle = w.angle + sign * angTol;
+          ball.x = cx + Math.cos(newAngle) * r;
+          ball.y = cy + Math.sin(newAngle) * r;
+
+          dx = ball.x - cx;
+          dy = ball.y - cy;
+          r = Math.hypot(dx, dy);
+          theta = Math.atan2(dx, dy);
         }
       }
 
-      // --- Twarda granica zewnętrzna ---
-      const maxR = rings[rings.length - 1] + 5;
+      // --- twarda granica zewnętrzna ---
+      const maxR = rings[rings.length - 1] + wallHalf + 5;
       if (r > maxR) {
-        reflectRadial(ball, rings[rings.length - 1]);
+        const ndx = ball.x - cx;
+        const ndy = ball.y - cy;
+        const len = Math.hypot(ndx, ndy) || 1;
+        const nx = ndx / len;
+        const ny = ndy / len;
+
+        reflect(ball, nx, ny);
+
+        const targetR = rings[rings.length - 1] + wallHalf + ball.r + 0.5;
+        ball.x = cx + nx * targetR;
+        ball.y = cy + ny * targetR;
       }
     }
   }
@@ -291,7 +311,7 @@
     const th = Math.atan2(dy, dx);
     const lastRing = ringGaps.length - 1;
 
-    if (r > rings[rings.length - 1] + 5) {
+    if (r > rings[rings.length - 1] + wallHalf + 5) {
       if (angleInGap(th, ringGaps[lastRing])) return true;
     }
     return false;
@@ -320,7 +340,7 @@
     ctx.save();
     ctx.translate(cx, cy);
 
-    // pierścienie
+    // pierścienie (wizualnie cienkie, fizycznie grube)
     for (let i = 0; i < rings.length; i++) {
       const R = rings[i];
       const gaps = ringGaps[i];
@@ -347,7 +367,7 @@
       }
     }
 
-    // ściany działowe
+    // ściany działowe (wizualnie cienkie)
     for (const w of radialWalls) {
       ctx.beginPath();
       ctx.moveTo(Math.cos(w.angle) * w.r1, Math.sin(w.angle) * w.r1);
