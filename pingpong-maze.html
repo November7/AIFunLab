@@ -55,21 +55,30 @@
   const MAX_STEP_TRAVEL = 1.2;
   const SOLVER_ITERS = 4;
   const PUSH_EPS = 0.05;
+  const MAZE_Y_OFFSET = 50;
 
   function resize() {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const hudHeight = document.getElementById("hud").offsetHeight || 0;
+    canvas.height = Math.max(120, window.innerHeight - hudHeight);
     W = canvas.width;
     H = canvas.height;
     cx = W / 2;
-    cy = H / 2;
+    cy = H / 2 - MAZE_Y_OFFSET;
 
     const margin = 36;
     const ringCount = 6;
-    const baseR = 46;
-    const step = 52;
+    const baseR = 70;
+    const step = 40;
     const baseMaxRadius = baseR + (ringCount - 1) * step;
-    const maxPossibleRadius = Math.min(W, H) / 2 - margin;
+    const maxPossibleRadius = Math.max(
+      40,
+      Math.min(
+        W / 2 - margin,
+        cy - margin,
+        H - cy - margin
+      )
+    );
     scale = maxPossibleRadius / baseMaxRadius;
   }
   window.addEventListener("resize", () => {
