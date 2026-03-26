@@ -4,6 +4,7 @@
 A collection of fully AI‑generated web experiments — animations, mini‑games, visual effects and interactive projects built with HTML, CSS and JavaScript. A creative sandbox showcasing ideas, prototypes and fun projects produced entirely by artificial intelligence. The human role is limited to prompting, suggesting improvements and making minor code adjustments.  
 
 Assistant: Copilot (free version on Windows 11)  
+Update 2026.03.26: Due to the limitations of Copilot in the Windows 11 (Free) version, the model has been switched to Copilot Pro (GitHub).
 
 Design assumptions: a maximum of 10 prompts in total (1 task prompt and up to 9 refinement prompts).
 The best version — not necessarily the last one — is selected as the final output.
