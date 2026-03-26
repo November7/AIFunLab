@@ -22,3 +22,5 @@ wizualnie przypomina labirynt z korzeni lub pęknięć
 6. teraz to już nie jest labirynt, linie działowe powinny o długości równej odległości powmiędzy pierścieniami, powinny być w ramach jednego pierścienia (obszar pomiędzy okręgami) a nie jako jedna długa linia do samego końca, wyjścia z pierścieni powinny być w różnych miejscach a nie na linii prostej jak obecnie. czy potrzebujesz rysunku pomocniczego?
 Copilot chce rysunek pomocniczy:
 7. przykład odręczny labiryntu centrycznego.
+8. prawie idealnie. czy zielone to wyjście? wyjście powinno być czarne tak jak tło i niekoniecznie jedno. widzę że w tej wersji jest zielone "wyjście" i zwykłe czarne. w którym miejscu mam wprowadzić ewentualne zmiany lub preślij gotowa wersję.
+

@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8" />
-<title>Labirynt Kołowy — Stabilna Wersja</title>
+<title>Centryczny labirynt z piłkami</title>
 <style>
   html, body {
     margin: 0;
@@ -42,7 +42,7 @@
   let stopTime = null;
   let running = true;
 
-  const ballSpeed = 250;
+  const ballSpeed = 260;
   const ballRadius = 5;
   const numBalls = 5;
 
@@ -62,59 +62,18 @@
     cy = H / 2;
 
     const margin = 40;
-    const ringCount = 6;
+    const ringCount = 7;
     const baseR = 40;
-    const step = 45;
+    const step = 40;
     const baseMaxRadius = baseR + (ringCount - 1) * step;
-
     const maxPossibleRadius = Math.min(W, H) / 2 - margin;
     scale = maxPossibleRadius / baseMaxRadius;
   }
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", () => {
+    resize();
+    generateStaticMaze();
+  });
   resize();
-
-  function generateStaticMaze() {
-    rings.length = 0;
-    ringGaps.length = 0;
-    radialWalls.length = 0;
-
-    const ringCount = 6;
-    const baseR = 40;
-    const step = 45;
-
-    for (let i = 0; i < ringCount; i++) {
-      const R = (baseR + i * step) * scale;
-      rings.push(R);
-
-      const gaps = [
-        { start: -Math.PI * 0.7, end: -Math.PI * 0.4 },
-        { start:  Math.PI * 0.2, end:  Math.PI * 0.45 }
-      ];
-      ringGaps.push(gaps);
-    }
-
-    const wallAngles = [
-      -Math.PI * 0.2,
-       Math.PI * 0.1,
-      -Math.PI * 0.9,
-       Math.PI * 0.65
-    ];
-
-    for (const a of wallAngles) {
-      for (let i = 0; i < rings.length - 1; i++) {
-        radialWalls.push({
-          angle: a,
-          r1: rings[i],
-          r2: rings[i + 1]
-        });
-      }
-    }
-
-    exitGap = { start: -Math.PI * 0.5, end: -Math.PI * 0.2 };
-    exitRadius = rings[rings.length - 1];
-  }
-
-  generateStaticMaze();
 
   function angleNorm(a) {
     while (a <= -Math.PI) a += 2 * Math.PI;
@@ -135,6 +94,83 @@
     }
     return false;
   }
+
+  function generateStaticMaze() {
+    rings.length = 0;
+    ringGaps.length = 0;
+    radialWalls.length = 0;
+
+    const ringCount = 7;
+    const baseR = 40;
+    const step = 40;
+
+    for (let i = 0; i < ringCount; i++) {
+      const R = (baseR + i * step) * scale;
+      rings.push(R);
+    }
+
+    // Główna ścieżka "wijąca się" przez pierścienie (w radianach)
+    // Każdy pierścień ma co najmniej jedną przerwę częściowo zachodzącą na poprzednią
+    ringGaps.push([
+      { start: -0.3, end: 0.3 },          // R0
+      { start:  2.4, end: 2.9 }          // dodatkowa przerwa
+    ]);
+    ringGaps.push([
+      { start:  0.1, end: 0.7 },         // R1
+      { start: -2.4, end: -2.0 }
+    ]);
+    ringGaps.push([
+      { start:  0.6, end: 1.2 },         // R2
+      { start: -1.8, end: -1.3 }
+    ]);
+    ringGaps.push([
+      { start:  1.1, end: 1.7 },         // R3
+      { start: -0.9, end: -0.4 }
+    ]);
+    ringGaps.push([
+      { start:  1.5, end: 2.1 },         // R4
+      { start:  0.0, end: 0.3 }
+    ]);
+    ringGaps.push([
+      { start:  1.9, end: 2.5 },         // R5
+      { start: -2.8, end: -2.3 }
+    ]);
+    ringGaps.push([
+      { start:  2.2, end: 2.8 },         // R6 (zewnętrzny, wyjście)
+      { start: -1.2, end: -0.8 }
+    ]);
+
+    // Ściany działowe: krótkie odcinki między sąsiednimi pierścieniami
+    // Każda ściana jest w jednym "pierścieniu" (między R[i] a R[i+1])
+    const wallDefs = [
+      // ringIndex, angle (radiany)
+      { ring: 0, angle: -Math.PI * 0.75 },
+      { ring: 0, angle:  Math.PI * 0.35 },
+      { ring: 1, angle: -Math.PI * 0.1  },
+      { ring: 1, angle:  Math.PI * 0.9  },
+      { ring: 2, angle: -Math.PI * 0.5  },
+      { ring: 2, angle:  Math.PI * 0.2  },
+      { ring: 3, angle:  Math.PI * 0.75 },
+      { ring: 3, angle: -Math.PI * 0.3  },
+      { ring: 4, angle:  Math.PI * 1.1  },
+      { ring: 4, angle: -Math.PI * 0.9  },
+      { ring: 5, angle:  Math.PI * 0.0  },
+      { ring: 5, angle: -Math.PI * 0.6  }
+    ];
+
+    for (const w of wallDefs) {
+      radialWalls.push({
+        angle: w.angle,
+        r1: rings[w.ring],
+        r2: rings[w.ring + 1]
+      });
+    }
+
+    exitGap = ringGaps[ringGaps.length - 1][0]; // pierwsza przerwa w zewnętrznym pierścieniu
+    exitRadius = rings[rings.length - 1];
+  }
+
+  generateStaticMaze();
 
   const balls = [];
 
@@ -165,7 +201,6 @@
     const dot = ball.vx * nx + ball.vy * ny;
     ball.vx -= 2 * dot * nx;
     ball.vy -= 2 * dot * ny;
-
     const target = R + (ball.r + 0.5) * (len > R ? 1 : -1);
     ball.x = cx + nx * target;
     ball.y = cy + ny * target;
@@ -192,6 +227,7 @@
       let r = Math.hypot(dx, dy);
       let theta = Math.atan2(dy, dx);
 
+      // kolizje z pierścieniami
       for (let i = 0; i < rings.length; i++) {
         const R = rings[i];
         if (Math.abs(r - R) < ball.r + 1) {
@@ -205,15 +241,13 @@
         }
       }
 
+      // kolizje z liniami działowymi (w jednym pierścieniu)
       for (const w of radialWalls) {
         if (r < w.r1 || r > w.r2) continue;
-
         const diff = Math.abs(angleNorm(theta - w.angle));
         const th = ball.r / (r || 1);
-
         if (diff < th) {
           reflectTangential(ball, w.angle);
-
           const sign = theta > w.angle ? 1 : -1;
           const newTheta = w.angle + sign * th;
           ball.x = cx + Math.cos(newTheta) * r;
@@ -231,7 +265,6 @@
         const dy = b.y - a.y;
         const dist = Math.hypot(dx, dy);
         const minD = a.r + b.r;
-
         if (dist > 0 && dist < minD) {
           const nx = dx / dist;
           const ny = dy / dist;
@@ -239,13 +272,11 @@
           const dvy = a.vy - b.vy;
           const rel = dvx * nx + dvy * ny;
           if (rel > 0) continue;
-
           const imp = -2 * rel / 2;
           const ix = imp * nx;
           const iy = imp * ny;
           a.vx += ix; a.vy += iy;
           b.vx -= ix; b.vy -= iy;
-
           const overlap = (minD - dist) / 2;
           a.x -= nx * overlap;
           a.y -= ny * overlap;
@@ -269,13 +300,10 @@
 
   function update(dt) {
     if (!running) return;
-
     for (const b of balls) {
       handleBallMaze(b, dt);
     }
-
     handleBallBall();
-
     for (const b of balls) {
       if (checkExit(b)) {
         running = false;
@@ -293,10 +321,10 @@
     ctx.save();
     ctx.translate(cx, cy);
 
+    // pierścienie (łuki ścian)
     for (let i = 0; i < rings.length; i++) {
       const R = rings[i];
       const gaps = ringGaps[i];
-
       const step = Math.PI / 80;
       let segStart = null;
 
@@ -320,6 +348,7 @@
       }
     }
 
+    // ściany działowe w pierścieniach
     for (const w of radialWalls) {
       ctx.beginPath();
       ctx.moveTo(Math.cos(w.angle) * w.r1, Math.sin(w.angle) * w.r1);
@@ -327,6 +356,7 @@
       ctx.stroke();
     }
 
+    // wyjście (zaznaczone na zewnętrznym pierścieniu)
     ctx.strokeStyle = "#0f0";
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -335,6 +365,7 @@
 
     ctx.restore();
 
+    // piłki
     for (const b of balls) {
       ctx.beginPath();
       ctx.fillStyle = b.color;
@@ -343,6 +374,7 @@
     }
   }
 
+  let lastT = null;
   function loop(t) {
     if (startTime === null) startTime = t;
     const dt = (t - (lastT || t)) / 1000;
@@ -359,7 +391,6 @@
     }
   }
 
-  let lastT = null;
   requestAnimationFrame(loop);
 })();
 </script>
