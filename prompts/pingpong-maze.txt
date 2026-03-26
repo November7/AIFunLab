@@ -23,4 +23,59 @@ wizualnie przypomina labirynt z korzeni lub pęknięć
 Copilot chce rysunek pomocniczy:
 7. przykład odręczny labiryntu centrycznego.
 8. prawie idealnie. czy zielone to wyjście? wyjście powinno być czarne tak jak tło i niekoniecznie jedno. widzę że w tej wersji jest zielone "wyjście" i zwykłe czarne. w którym miejscu mam wprowadzić ewentualne zmiany lub preślij gotowa wersję.
+9. labirynt nie ma wyjścia.
+Copilot dopytuje:
+A)
+Zbudował labirynt dokładnie taki jak na Twoim rysunku (czyli odwzorowanie układu)?
 
+B)
+Zbudował labirynt w stylu Twojego rysunku, ale nie 1:1 — tylko logiczny, spiralny, z wyjściem?
+
+C)
+Chcesz przesłać jeszcze jeden rysunek, ale z zaznaczoną ścieżką wyjściową?
+10. B
+11. wygląd ok, ale piłki znikają i się przyklejają. (przekroczony limit promptów, dodaje 2 prompty z uwagi na jego propozycje do wyboru)
+Copilot prosi o zrzut ekranu labiryntu: 
+12. zrzut - piłki zniknęły (a czas idzie dalej)
+Propozycje:
+Jaką wersję fizyki chcesz?
+A) Ultra‑stabilna fizyka (wolniejsze piłki, zero znikania, zero przyklejania)
+prędkość piłek zmniejszona,
+
+sub‑stepping ×16,
+
+CCD,
+
+clamping,
+
+piłki nigdy nie znikają.
+
+B) Ultra‑dokładna fizyka (szybkie piłki, pełne CCD, odbicia jak w silniku Box2D)
+piłki mogą być szybkie,
+pełne continuous collision detection,
+odbicia od narożników,
+brak przyklejania,
+brak znikania,
+ale kod będzie większy.
+C) Zmniejszamy gęstość ścian (labirynt bardziej jak Twój rysunek)
+mniej ścian działowych,
+mniej ostrych kątów,
+fizyka działa stabilnie nawet bez CCD.
+13. B (doliczam 1 prompt)
+Kolejna propozycja:
+A) odbijać się idealnie jak w bilardzie (pełna fizyka, zachowanie energii)
+czy
+B) mogą odbijać się „prościej”, ale stabilnie (bardziej arcade)?
+Obie wersje będą stabilne, ale:
+A = bardziej realistyczna, więcej obliczeń
+B = prostsza, szybsza, ale nadal bez przyklejania i znikania
+14. B (doliczam prompt)
+Czy piłki mogą odbijać się minimalnie mniej energicznie (np. 98% prędkości po odbiciu),
+żeby uniknąć oscylacji w narożnikach?
+To jest standard w grach arcade — minimalny damping:
+nie widać go gołym okiem,
+ale eliminuje drgania i „wibrowanie” w zakamarkach.
+Wybierz:
+A) Tak, może być minimalny damping (98%) — stabilniejsze.
+B) Nie, odbicia muszą być w 100% energiczne.
+14. B (kolejny prompt doliczony)
