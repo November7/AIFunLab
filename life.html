@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Conway's Game of Life</title>
+	<style>
+		:root {
+			--bg: #16181c;
+			--panel: #20242a;
+			--text: #e9edf2;
+			--muted: #aab3bf;
+			--alive: #cfd7e2;
+			--dead: #222427;
+			--accent: #ffd449;
+			--border: #353d48;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			margin: 0;
+			width: 100%;
+			height: 100%;
+			background: var(--bg);
+			color: var(--text);
+			font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+		}
+
+		body {
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
+
+		.toolbar {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 8px;
+			padding: 10px 12px;
+			background: linear-gradient(180deg, #2a2f36 0%, #20242b 100%);
+			border-bottom: 1px solid var(--border);
+		}
+
+		.btn {
+			border: 1px solid #4a525f;
+			background: #2d333c;
+			color: var(--text);
+			padding: 7px 11px;
+			border-radius: 7px;
+			font-size: 13px;
+			cursor: pointer;
+			transition: transform 0.15s ease, background 0.15s ease;
+		}
+
+		.btn:hover {
+			background: #38404b;
+			transform: translateY(-1px);
+		}
+
+		.btn:active {
+			transform: translateY(0);
+		}
+
+		.btn.primary {
+			border-color: #b8931a;
+			color: #1b1300;
+			background: var(--accent);
+			font-weight: 600;
+		}
+
+		.status {
+			margin-left: auto;
+			display: flex;
+			flex-wrap: wrap;
+			gap: 12px;
+			font-size: 13px;
+			color: var(--muted);
+		}
+
+		.status strong {
+			color: var(--text);
+			font-weight: 700;
+		}
+
+		.board-wrap {
+			flex: 1;
+			width: 100%;
+			background: var(--dead);
+		}
+
+		#lifeBoard {
+			display: block;
+			width: 100%;
+			height: 100%;
+			background: var(--dead);
+			image-rendering: pixelated;
+			cursor: crosshair;
+		}
+	</style>
+</head>
+<body>
+	<header class="toolbar">
+		<button class="btn primary" id="toggleRun">Start</button>
+		<button class="btn" id="randomBtn">Układ losowy</button>
+		<button class="btn" id="stableBtn">Układ stabilny</button>
+		<button class="btn" id="fadingBtn">Układ wygaszający</button>
+		<button class="btn" id="clearBtn">Wyczyść</button>
+
+		<div class="status">
+			<span>Czas: <strong id="timeCounter">0.0 s</strong></span>
+			<span>Generacja: <strong id="genCounter">0</strong></span>
+			<span>Żywe: <strong id="aliveCounter">0</strong></span>
+		</div>
+	</header>
+
+	<main class="board-wrap">
+		<canvas id="lifeBoard" aria-label="Plansza gry Conwaya"></canvas>
+	</main>
+
+	<script>
+		const CELL_SIZE = 3;
+		const STEP_MS = 90;
+
+		const canvas = document.getElementById("lifeBoard");
+		const ctx = canvas.getContext("2d");
+
+		const toggleRunBtn = document.getElementById("toggleRun");
+		const randomBtn = document.getElementById("randomBtn");
+		const stableBtn = document.getElementById("stableBtn");
+		const fadingBtn = document.getElementById("fadingBtn");
+		const clearBtn = document.getElementById("clearBtn");
+		const timeCounter = document.getElementById("timeCounter");
+		const genCounter = document.getElementById("genCounter");
+		const aliveCounter = document.getElementById("aliveCounter");
+		const css = getComputedStyle(document.documentElement);
+		const DEAD_COLOR = css.getPropertyValue("--dead").trim() || "#2a3039";
+		const ALIVE_COLOR = css.getPropertyValue("--alive").trim() || "#cfd7e2";
+
+		let cols = 0;
+		let rows = 0;
+		let grid = [];
+		let nextGrid = [];
+		let isRunning = false;
+		let generation = 0;
+		let elapsedMs = 0;
+		let stepAccumulator = 0;
+		let lastFrame = performance.now();
+
+		function createEmptyGrid(width, height) {
+			return Array.from({ length: height }, () => new Uint8Array(width));
+		}
+
+		function resizeBoard() {
+			const width = canvas.clientWidth;
+			const height = canvas.clientHeight;
+
+			canvas.width = width;
+			canvas.height = height;
+
+			const newCols = Math.max(1, Math.floor(width / CELL_SIZE));
+			const newRows = Math.max(1, Math.floor(height / CELL_SIZE));
+
+			if (newCols === cols && newRows === rows && grid.length) {
+				drawGrid();
+				return;
+			}
+
+			const newGrid = createEmptyGrid(newCols, newRows);
+			const newNext = createEmptyGrid(newCols, newRows);
+
+			for (let y = 0; y < Math.min(rows, newRows); y++) {
+				for (let x = 0; x < Math.min(cols, newCols); x++) {
+					newGrid[y][x] = grid[y][x];
+				}
+			}
+
+			cols = newCols;
+			rows = newRows;
+			grid = newGrid;
+			nextGrid = newNext;
+			updateCounters();
+			drawGrid();
+		}
+
+		function clearGrid() {
+			for (let y = 0; y < rows; y++) {
+				grid[y].fill(0);
+				nextGrid[y].fill(0);
+			}
+			generation = 0;
+			elapsedMs = 0;
+			stepAccumulator = 0;
+			updateCounters();
+			drawGrid();
+		}
+
+		function randomizeGrid(probability = 0.26) {
+			for (let y = 0; y < rows; y++) {
+				for (let x = 0; x < cols; x++) {
+					grid[y][x] = Math.random() < probability ? 1 : 0;
+				}
+			}
+			generation = 0;
+			elapsedMs = 0;
+			stepAccumulator = 0;
+			updateCounters();
+			drawGrid();
+		}
+
+		function placePattern(pattern, offsetX, offsetY) {
+			for (let py = 0; py < pattern.length; py++) {
+				for (let px = 0; px < pattern[py].length; px++) {
+					const x = offsetX + px;
+					const y = offsetY + py;
+					if (x >= 0 && x < cols && y >= 0 && y < rows) {
+						grid[y][x] = pattern[py][px];
+					}
+				}
+			}
+		}
+
+		function seedStableLayout() {
+			clearGrid();
+
+			const block = [
+				[1, 1],
+				[1, 1]
+			];
+			const tub = [
+				[0, 1, 0],
+				[1, 0, 1],
+				[0, 1, 0]
+			];
+			const loaf = [
+				[0, 1, 1, 0],
+				[1, 0, 0, 1],
+				[0, 1, 0, 1],
+				[0, 0, 1, 0]
+			];
+
+			// Rozkładamy stabilne figury po planszy, aby utrzymywały się stale.
+			const marginX = Math.max(2, Math.floor(cols * 0.08));
+			const marginY = Math.max(2, Math.floor(rows * 0.08));
+			const spacingX = Math.max(8, Math.floor(cols * 0.2));
+			const spacingY = Math.max(8, Math.floor(rows * 0.2));
+
+			const patterns = [block, tub, loaf, block, tub, loaf, block, tub];
+			let index = 0;
+			for (let y = marginY; y < rows - marginY; y += spacingY) {
+				for (let x = marginX; x < cols - marginX; x += spacingX) {
+					placePattern(patterns[index % patterns.length], x, y);
+					index++;
+				}
+			}
+
+			generation = 0;
+			elapsedMs = 0;
+			stepAccumulator = 0;
+			updateCounters();
+			drawGrid();
+		}
+
+		function seedFadingLayout() {
+			clearGrid();
+
+			const glider = [
+				[0, 1, 0],
+				[0, 0, 1],
+				[1, 1, 1]
+			];
+			const diehard = [
+				[0, 0, 0, 0, 0, 0, 1, 0],
+				[1, 1, 0, 0, 0, 0, 0, 0],
+				[0, 1, 0, 0, 0, 1, 1, 1]
+			];
+			const acorn = [
+				[0, 1, 0, 0, 0, 0, 0],
+				[0, 0, 0, 1, 0, 0, 0],
+				[1, 1, 0, 0, 1, 1, 1]
+			];
+
+			const midX = Math.floor(cols / 2);
+			const midY = Math.floor(rows / 2);
+
+			placePattern(diehard, Math.max(1, midX - 25), Math.max(1, midY - 12));
+			placePattern(acorn, Math.max(1, midX + 10), Math.max(1, midY + 8));
+
+			for (let i = 0; i < 5; i++) {
+				const x = Math.floor(Math.random() * Math.max(1, cols - 4));
+				const y = Math.floor(Math.random() * Math.max(1, rows - 4));
+				placePattern(glider, x, y);
+			}
+
+			generation = 0;
+			elapsedMs = 0;
+			stepAccumulator = 0;
+			updateCounters();
+			drawGrid();
+		}
+
+		function countNeighbors(x, y) {
+			let neighbors = 0;
+			for (let dy = -1; dy <= 1; dy++) {
+				for (let dx = -1; dx <= 1; dx++) {
+					if (dx === 0 && dy === 0) {
+						continue;
+					}
+					const nx = x + dx;
+					const ny = y + dy;
+					if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
+						neighbors += grid[ny][nx];
+					}
+				}
+			}
+			return neighbors;
+		}
+
+		function simulationStep() {
+			let alive = 0;
+			for (let y = 0; y < rows; y++) {
+				for (let x = 0; x < cols; x++) {
+					const current = grid[y][x];
+					const neighbors = countNeighbors(x, y);
+					let next = 0;
+
+					if (current === 1 && (neighbors === 2 || neighbors === 3)) {
+						next = 1;
+					}
+					if (current === 0 && neighbors === 3) {
+						next = 1;
+					}
+
+					nextGrid[y][x] = next;
+					alive += next;
+				}
+			}
+
+			const temp = grid;
+			grid = nextGrid;
+			nextGrid = temp;
+			generation++;
+			aliveCounter.textContent = String(alive);
+			genCounter.textContent = String(generation);
+			drawGrid();
+		}
+
+		function drawGrid() {
+			ctx.fillStyle = DEAD_COLOR;
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+			ctx.fillStyle = ALIVE_COLOR;
+			for (let y = 0; y < rows; y++) {
+				for (let x = 0; x < cols; x++) {
+					if (grid[y][x]) {
+						ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+					}
+				}
+			}
+		}
+
+		function updateCounters() {
+			let alive = 0;
+			for (let y = 0; y < rows; y++) {
+				for (let x = 0; x < cols; x++) {
+					alive += grid[y][x];
+				}
+			}
+			aliveCounter.textContent = String(alive);
+			genCounter.textContent = String(generation);
+			timeCounter.textContent = `${(elapsedMs / 1000).toFixed(1)} s`;
+		}
+
+		function setRunningState(nextState) {
+			isRunning = nextState;
+			toggleRunBtn.textContent = isRunning ? "Pauza" : "Start";
+			toggleRunBtn.classList.toggle("primary", !isRunning);
+			toggleRunBtn.classList.toggle("running", isRunning);
+		}
+
+		function animate(now) {
+			const delta = now - lastFrame;
+			lastFrame = now;
+
+			if (isRunning) {
+				elapsedMs += delta;
+				stepAccumulator += delta;
+				while (stepAccumulator >= STEP_MS) {
+					simulationStep();
+					stepAccumulator -= STEP_MS;
+				}
+				timeCounter.textContent = `${(elapsedMs / 1000).toFixed(1)} s`;
+			}
+
+			requestAnimationFrame(animate);
+		}
+
+		function toggleCellFromPointer(event) {
+			const rect = canvas.getBoundingClientRect();
+			const x = Math.floor((event.clientX - rect.left) / CELL_SIZE);
+			const y = Math.floor((event.clientY - rect.top) / CELL_SIZE);
+
+			if (x < 0 || y < 0 || x >= cols || y >= rows) {
+				return;
+			}
+
+			grid[y][x] = grid[y][x] ? 0 : 1;
+			updateCounters();
+			drawGrid();
+		}
+
+		let isDrawing = false;
+		canvas.addEventListener("mousedown", (event) => {
+			isDrawing = true;
+			toggleCellFromPointer(event);
+		});
+
+		canvas.addEventListener("mousemove", (event) => {
+			if (!isDrawing) {
+				return;
+			}
+			toggleCellFromPointer(event);
+		});
+
+		window.addEventListener("mouseup", () => {
+			isDrawing = false;
+		});
+
+		toggleRunBtn.addEventListener("click", () => {
+			setRunningState(!isRunning);
+		});
+
+		randomBtn.addEventListener("click", () => {
+			randomizeGrid();
+			setRunningState(true);
+		});
+
+		stableBtn.addEventListener("click", () => {
+			seedStableLayout();
+			setRunningState(true);
+		});
+
+		fadingBtn.addEventListener("click", () => {
+			seedFadingLayout();
+			setRunningState(true);
+		});
+
+		clearBtn.addEventListener("click", () => {
+			clearGrid();
+			setRunningState(false);
+		});
+
+		window.addEventListener("resize", resizeBoard);
+
+		resizeBoard();
+		randomizeGrid(0.2);
+		setRunningState(false);
+		requestAnimationFrame(animate);
+	</script>
+</body>
+</html>

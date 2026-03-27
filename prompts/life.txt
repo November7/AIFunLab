@@ -1,0 +1,3 @@
+Wersja 1 [PL]
+
+1. Przygotuj stronę html+css+js+svg/canvas zawierającą grę life Conwaya na zasadach klasycznych. cała dostępna plansza wypelniona czarnymi polami (np o rozmiarze 5x5px) - białe to pola reprezentujące życie. u samej góry kilka przycisków startujących grę np. układ losowy, układ stabilny - czyli taki który dąży do stabilnych obszarów które utrzymują życie przez cały czas, układ wygaszający się w jakiejś perspektywie czasowej itp. dodatkowo licznik czasu również w górnej częsci.
