@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="pl">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Wieże Hanoi</title>
+	<style>
+		:root {
+			--bg-1: #0f172a;
+			--bg-2: #111827;
+			--panel: rgba(8, 15, 33, 0.7);
+			--text: #e5ecff;
+			--muted: #a8b7d6;
+			--accent: #f59e0b;
+			--accent-2: #22d3ee;
+			--danger: #ef4444;
+			--ok: #10b981;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			margin: 0;
+			min-height: 100%;
+			font-family: "Segoe UI", "Trebuchet MS", Verdana, sans-serif;
+			color: var(--text);
+			background:
+				radial-gradient(circle at 20% 15%, #1e293b 0%, transparent 40%),
+				radial-gradient(circle at 80% 10%, #0f766e 0%, transparent 28%),
+				linear-gradient(145deg, var(--bg-1), var(--bg-2));
+		}
+
+		body {
+			display: grid;
+			place-items: center;
+			padding: 18px;
+		}
+
+		.app {
+			width: min(980px, 100%);
+			backdrop-filter: blur(6px);
+			background: var(--panel);
+			border: 1px solid rgba(148, 163, 184, 0.25);
+			border-radius: 18px;
+			box-shadow: 0 24px 50px rgba(2, 8, 23, 0.45);
+			overflow: hidden;
+		}
+
+		.top {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 12px;
+			padding: 14px;
+			border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+			background: linear-gradient(180deg, rgba(30, 41, 59, 0.55), rgba(15, 23, 42, 0.1));
+		}
+
+		.title {
+			margin-right: auto;
+			font-size: clamp(1rem, 2.5vw, 1.25rem);
+			letter-spacing: 0.03em;
+			font-weight: 700;
+		}
+
+		label {
+			display: inline-flex;
+			align-items: center;
+			gap: 8px;
+			color: var(--muted);
+			font-size: 0.95rem;
+		}
+
+		input[type="number"] {
+			width: 90px;
+			border: 1px solid rgba(148, 163, 184, 0.4);
+			border-radius: 10px;
+			background: rgba(15, 23, 42, 0.7);
+			color: var(--text);
+			padding: 8px 10px;
+			font-size: 1rem;
+			outline: none;
+		}
+
+		input[type="number"]:focus {
+			border-color: var(--accent-2);
+			box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.18);
+		}
+
+		button {
+			border: none;
+			border-radius: 10px;
+			padding: 10px 14px;
+			font-weight: 700;
+			font-size: 0.95rem;
+			color: #082f49;
+			background: linear-gradient(135deg, #67e8f9, #fbbf24);
+			cursor: pointer;
+			transition: transform 0.18s ease, box-shadow 0.18s ease;
+		}
+
+		button:hover {
+			transform: translateY(-1px);
+			box-shadow: 0 10px 18px rgba(2, 6, 23, 0.32);
+		}
+
+		button:disabled {
+			cursor: not-allowed;
+			opacity: 0.6;
+			transform: none;
+			box-shadow: none;
+		}
+
+		.stats {
+			padding: 8px 14px 14px;
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px 20px;
+			color: var(--muted);
+			font-size: 0.92rem;
+		}
+
+		.ok {
+			color: var(--ok);
+			font-weight: 700;
+		}
+
+		.warn {
+			color: var(--danger);
+			font-weight: 700;
+		}
+
+		.scene-wrap {
+			padding: 4px 12px 16px;
+		}
+
+		#scene {
+			width: 100%;
+			height: auto;
+			display: block;
+			border-radius: 14px;
+			background:
+				radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.08), transparent 45%),
+				linear-gradient(180deg, rgba(30, 64, 175, 0.15), rgba(2, 6, 23, 0.65));
+		}
+
+		.rod-label {
+			font-size: 16px;
+			fill: #bfdbfe;
+			font-weight: 700;
+			text-anchor: middle;
+			letter-spacing: 0.06em;
+		}
+
+		.base,
+		.rod {
+			fill: #334155;
+		}
+
+		.disk {
+			stroke: rgba(15, 23, 42, 0.65);
+			stroke-width: 2;
+			filter: drop-shadow(0 5px 4px rgba(2, 6, 23, 0.35));
+		}
+
+		@media (max-width: 650px) {
+			.top {
+				gap: 10px;
+			}
+
+			label {
+				width: 100%;
+				justify-content: space-between;
+			}
+
+			input[type="number"] {
+				width: 120px;
+			}
+
+			.title {
+				width: 100%;
+			}
+		}
+	</style>
+</head>
+<body>
+	<main class="app">
+		<div class="top">
+			<div class="title">Wieże Hanoi: lewy → prawy</div>
+			<label for="diskCount">
+				Liczba krążków
+				<input id="diskCount" type="number" min="1" max="10" value="5">
+			</label>
+			<button id="startBtn">Start</button>
+		</div>
+
+		<div class="stats">
+			<div>Ruch: <span id="moveNow">0</span></div>
+			<div>Razem: <span id="moveTotal">0</span></div>
+			<div>Status: <span id="statusText">gotowe</span></div>
+		</div>
+
+		<div class="scene-wrap">
+			<svg id="scene" viewBox="0 0 900 460" aria-label="Animacja Wież Hanoi"></svg>
+		</div>
+	</main>
+
+	<script>
+		const svg = document.getElementById("scene");
+		const input = document.getElementById("diskCount");
+		const startBtn = document.getElementById("startBtn");
+		const moveNowEl = document.getElementById("moveNow");
+		const moveTotalEl = document.getElementById("moveTotal");
+		const statusEl = document.getElementById("statusText");
+
+		const geometry = {
+			width: 900,
+			height: 460,
+			baseY: 380,
+			baseHeight: 24,
+			rodHeight: 240,
+			rodWidth: 14,
+			diskHeight: 22,
+			liftY: 80,
+			rodX: [180, 450, 720]
+		};
+
+		const colors = [
+			"#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16",
+			"#22c55e", "#10b981", "#06b6d4", "#3b82f6", "#8b5cf6"
+		];
+
+		let rods = [[], [], []];
+		let diskNodes = new Map();
+		let moves = [];
+		let isRunning = false;
+		let moveIndex = 0;
+		let token = 0;
+
+		function clampDiskCount(value) {
+			if (!Number.isFinite(value)) {
+				return 5;
+			}
+			return Math.max(1, Math.min(10, Math.floor(value)));
+		}
+
+		function setStatus(text, kind = "") {
+			statusEl.textContent = text;
+			statusEl.className = kind;
+		}
+
+		function clearSvg() {
+			while (svg.firstChild) {
+				svg.removeChild(svg.firstChild);
+			}
+		}
+
+		function makeNode(tag, attrs) {
+			const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+			for (const [k, v] of Object.entries(attrs)) {
+				node.setAttribute(k, String(v));
+			}
+			return node;
+		}
+
+		function drawBoard() {
+			const base = makeNode("rect", {
+				x: 70,
+				y: geometry.baseY,
+				width: 760,
+				height: geometry.baseHeight,
+				rx: 8,
+				class: "base"
+			});
+			svg.appendChild(base);
+
+			["L", "S", "P"].forEach((label, i) => {
+				const rod = makeNode("rect", {
+					x: geometry.rodX[i] - geometry.rodWidth / 2,
+					y: geometry.baseY - geometry.rodHeight,
+					width: geometry.rodWidth,
+					height: geometry.rodHeight,
+					rx: 7,
+					class: "rod"
+				});
+				const text = makeNode("text", {
+					x: geometry.rodX[i],
+					y: geometry.baseY + 44,
+					class: "rod-label"
+				});
+				text.textContent = label;
+				svg.appendChild(rod);
+				svg.appendChild(text);
+			});
+		}
+
+		function diskWidth(size, total) {
+			const max = 220;
+			const min = 72;
+			if (total <= 1) {
+				return max;
+			}
+			const ratio = (size - 1) / (total - 1);
+			return min + ratio * (max - min);
+		}
+
+		function diskY(level) {
+			return geometry.baseY - geometry.diskHeight * (level + 1);
+		}
+
+		function placeDiskNode(node, rodIndex, level, size, total) {
+			const width = diskWidth(size, total);
+			node.setAttribute("width", width);
+			node.setAttribute("height", geometry.diskHeight);
+			node.setAttribute("x", geometry.rodX[rodIndex] - width / 2);
+			node.setAttribute("y", diskY(level));
+			node.setAttribute("rx", 8);
+		}
+
+		function initState(total) {
+			rods = [[], [], []];
+			diskNodes = new Map();
+			moves = [];
+			moveIndex = 0;
+
+			clearSvg();
+			drawBoard();
+
+			for (let size = total; size >= 1; size--) {
+				rods[0].push(size);
+			}
+
+			rods[0].forEach((size, level) => {
+				const node = makeNode("rect", {
+					class: "disk",
+					fill: colors[(size - 1) % colors.length]
+				});
+				placeDiskNode(node, 0, level, size, total);
+				diskNodes.set(size, node);
+				svg.appendChild(node);
+			});
+		}
+
+		function buildMoves(n, from, aux, to, out) {
+			if (n <= 0) {
+				return;
+			}
+			buildMoves(n - 1, from, to, aux, out);
+			out.push({ from, to });
+			buildMoves(n - 1, aux, from, to, out);
+		}
+
+		function animateDisk(size, fromRod, toRod, total, currentToken) {
+			return new Promise((resolve) => {
+				const node = diskNodes.get(size);
+				const startX = Number(node.getAttribute("x"));
+				const startY = Number(node.getAttribute("y"));
+
+				const width = Number(node.getAttribute("width"));
+				const destLevel = rods[toRod].length;
+				const destX = geometry.rodX[toRod] - width / 2;
+				const destY = diskY(destLevel);
+				const liftY = geometry.liftY;
+
+				const tUp = 240;
+				const tAcross = 340;
+				const tDown = 240;
+				const totalTime = tUp + tAcross + tDown;
+				const tStart = performance.now();
+
+				function easeInOut(p) {
+					return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+				}
+
+				function tick(now) {
+					if (currentToken !== token) {
+						resolve();
+						return;
+					}
+
+					const elapsed = Math.min(now - tStart, totalTime);
+
+					if (elapsed <= tUp) {
+						const p = easeInOut(elapsed / tUp);
+						node.setAttribute("y", String(startY + (liftY - startY) * p));
+						node.setAttribute("x", String(startX));
+					} else if (elapsed <= tUp + tAcross) {
+						const p = easeInOut((elapsed - tUp) / tAcross);
+						node.setAttribute("y", String(liftY));
+						node.setAttribute("x", String(startX + (destX - startX) * p));
+					} else {
+						const p = easeInOut((elapsed - tUp - tAcross) / tDown);
+						node.setAttribute("y", String(liftY + (destY - liftY) * p));
+						node.setAttribute("x", String(destX));
+					}
+
+					if (elapsed < totalTime) {
+						requestAnimationFrame(tick);
+					} else {
+						node.setAttribute("x", String(destX));
+						node.setAttribute("y", String(destY));
+						resolve();
+					}
+				}
+
+				requestAnimationFrame(tick);
+			});
+		}
+
+		async function runAnimation(total, currentToken) {
+			isRunning = true;
+			startBtn.disabled = true;
+			input.disabled = true;
+			moveNowEl.textContent = "0";
+			moveTotalEl.textContent = String(moves.length);
+			setStatus("animacja trwa", "");
+
+			for (let i = 0; i < moves.length; i++) {
+				if (currentToken !== token) {
+					return;
+				}
+
+				const move = moves[i];
+				const source = rods[move.from];
+				if (!source.length) {
+					setStatus("błąd: pusty słupek", "warn");
+					break;
+				}
+
+				const size = source[source.length - 1];
+				source.pop();
+
+				await animateDisk(size, move.from, move.to, total, currentToken);
+
+				if (currentToken !== token) {
+					return;
+				}
+
+				rods[move.to].push(size);
+				moveIndex = i + 1;
+				moveNowEl.textContent = String(moveIndex);
+			}
+
+			if (currentToken === token) {
+				setStatus("zakończono", "ok");
+				isRunning = false;
+				startBtn.disabled = false;
+				input.disabled = false;
+			}
+		}
+
+		function start() {
+			const total = clampDiskCount(Number(input.value));
+			input.value = String(total);
+
+			token += 1;
+			const currentToken = token;
+
+			initState(total);
+			buildMoves(total, 0, 1, 2, moves);
+			runAnimation(total, currentToken);
+		}
+
+		startBtn.addEventListener("click", start);
+		input.addEventListener("keydown", (ev) => {
+			if (ev.key === "Enter") {
+				start();
+			}
+		});
+
+		// Start from a valid initial state so the user immediately sees the puzzle setup.
+		start();
+	</script>
+</body>
+</html>

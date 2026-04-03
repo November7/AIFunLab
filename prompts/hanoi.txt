@@ -1,0 +1,3 @@
+Wersja 1 [PL]
+
+1. Wygeneruj animację (html, css, js, svg/canvas) wszystko w jednym pliku, która realizuje wieże hanoi. u góry pole do podania ilości krążków i przycisk start. algorytm przestawia krążki z lewego słupka na prawy korzystając ze środkowego słupka.
