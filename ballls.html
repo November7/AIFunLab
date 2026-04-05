@@ -305,7 +305,7 @@
 			<div class="status" id="status"></div>
 		</div>
 
-		<div class="footer">Ułóż minimum 5 kulek w linii: poziomo, pionowo lub po skosie.</div>
+		<div class="footer">Ułóż minimum 5 kulek w linii: poziomo, pionowo lub po skosie. Bonus: po zbiciu co najmniej 6 kulek nie pojawiają się 3 nowe kulki.</div>
 	</div>
 
 	<script>
@@ -315,6 +315,7 @@
 			const PADDING = 22;
 			const RADIUS = 18;
 			const SPAWN_PER_TURN = 3;
+			const BONUS_CLEAR_THRESHOLD = 6;
 
 			const SVG_NS = "http://www.w3.org/2000/svg";
 			const gridLayer = document.getElementById("grid-layer");
@@ -483,6 +484,11 @@
 				setTimeout(() => {
 					if (isBoardFull()) {
 						finishGame();
+						return;
+					}
+
+					if (firstClear >= BONUS_CLEAR_THRESHOLD) {
+						status("Bonus: zbito " + firstClear + " kulek, więc nie dodano 3 nowych.");
 						return;
 					}
 
