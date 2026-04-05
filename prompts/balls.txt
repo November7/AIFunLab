@@ -1,0 +1,6 @@
+Wersja 1 [PL]:
+
+1. gra w kulki - pole (11x11) na której są różnokolorowe kulki celem jest dołożenie przynajmniej 5 kulki o tym samym kolorze żeby zniknęły ułożone w pionie/poziomie/skosie. ilość kolorów jako opcja. kulka może przesuwać się tylko po wolnych obszarach tak że jeśli klikamy na kulkę to następnie klikamy na wolne miejsce o ile istnieje trasa pustej przestrzeni tak że zaznaczona kulka może się "przedostać". wygeneruj wszyskto w jednym pliki svg js css html. animacja kulek podczas ruchu, zaznaczona kulka delikatnie podskakuje, przechodząc miedzy polami też podskakuje. po zakończonym ruchu pojawiają się 3 nowe kulki w losowych miejscach w losowych kolorach. start gry z pustą planszą. menu u góry - nowa gra, ilosć kolorów. punkty za zbicie odpowiednio 5 - 11 kulke (stopniuj punkty w zależności od ilości)
+2. dodaj dark mode (przycisk u góry), dodaj obsługę dotyku dla urządzeń mobilnych i dostosowanie do rozmiaru urządzenia. 
+
+[koniec]
