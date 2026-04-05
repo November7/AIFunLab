@@ -4,5 +4,7 @@ Wersja 1 [PL]:
 2. dodaj dark mode (przycisk u góry), dodaj obsługę dotyku dla urządzeń mobilnych i dostosowanie do rozmiaru urządzenia. 
 3. Update: po zbiciu przynajmniej 6 kulek nie dodawaj 3 nowych kulke (jako bonus) - umieść tę informację na dole strony
 4. nie działa na urządzeniu mobilnym. klikanie zaznacza kulkę, kolejne kliknięcie czasem powoduje wyznaczenie ścieżki, ale kulka nie porusza się.
-
+5. Czasem animacja przesuwania kulki nie działa. Piłka jedynie pojawia się po chwili w docelowym miejscu. Po przesunięciu piłki blokującej trasę gra pokazuje że trasa dalej jest zablokowana i nie mogę umieścić tam nowej piłki. Czasami po wybraniu piłki i wybraniu końcowego pola nic się nie dzieje tylko piłka się odznacza.
+6. nadal pojawia się problem, że zaznaczam kulkę, klikam w puste pole i nic się niedziej. nie ma animacji nie ma ruchu tylko kulka się odznacza tak jakby ruch był nielegalny mimo że jest legalny (jest trasa)
+7. nadal pozostaje problem zajętych (mimo że pustych) pól. kulka można zaznaczyć, ale mimo wszystko nie można przejść przez trasę, gdzie wcześniej była kulka i uniemożliwiała ruch. zdarza się to czasem. do testów przygotuj funkckcję generującą losowy układ początkowy z np zajętością 30-40%
 [koniec]

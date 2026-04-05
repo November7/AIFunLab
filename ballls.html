@@ -282,6 +282,7 @@
 	<div class="app">
 		<div class="menu">
 			<button id="new-game" type="button">Nowa gra</button>
+				<button id="random-test" type="button">Test 30-40%</button>
 			<button id="theme-toggle" type="button" aria-pressed="false">Ciemny motyw</button>
 
 			<span class="label">Ilość kolorów:</span>
@@ -324,6 +325,7 @@
 			const boardWrap = document.querySelector(".board-wrap");
 			const boardEl = document.getElementById("board");
 			const newGameBtn = document.getElementById("new-game");
+			const randomTestBtn = document.getElementById("random-test");
 			const themeToggleBtn = document.getElementById("theme-toggle");
 			const colorsSelect = document.getElementById("colors-count");
 			const scoreEl = document.getElementById("score");
@@ -345,6 +347,7 @@
 			let score = 0;
 			let colorCount = Number(colorsSelect.value);
 			let animating = false;
+			let turnLocked = false;
 			let gameOver = false;
 			let isDarkTheme = false;
 			let cellElements = [];
@@ -358,6 +361,9 @@
 
 			function bindUi() {
 				newGameBtn.addEventListener("click", newGame);
+				randomTestBtn.addEventListener("click", () => {
+					newRandomTestGame(0.3, 0.4);
+				});
 				themeToggleBtn.addEventListener("click", () => {
 					setTheme(!isDarkTheme);
 				});
@@ -433,13 +439,14 @@
 					ev.preventDefault();
 				}
 
-				if (animating || gameOver) {
+				if (animating || gameOver || turnLocked) {
 					return;
 				}
 
 				const row = Number(ev.currentTarget.dataset.row);
 				const col = Number(ev.currentTarget.dataset.col);
-				const hasBall = board[row][col] !== null;
+				sanitizeBoard();
+				const hasBall = isOccupiedCell(row, col);
 
 				if (hasBall) {
 					if (selected && selected.row === row && selected.col === col) {
@@ -460,20 +467,52 @@
 				const from = { row: selected.row, col: selected.col };
 				const to = { row, col };
 
+				if (!isOccupiedCell(from.row, from.col)) {
+					selected = null;
+					drawBalls();
+					status("Ta kulka nie jest już dostępna. Wybierz inną.", true);
+					return;
+				}
+
 				const path = findPath(from, to);
 				if (!path) {
 					indicateInvalid(row, col, "Brak drogi przez puste pola.");
 					return;
 				}
 
-				animateBallMove(from, to, path, () => {
-					executeMove(from, to);
+				selected = null;
+				clearPathPreview();
+
+				// Temporarily remove ball from board so the cell is free
+				// during animation and subsequent path-finding for other moves
+				const movingColor = board[from.row][from.col];
+				board[from.row][from.col] = null;
+
+				// Remap element to a transient key so drawBalls() won't touch it
+				const fromKey = from.row + "," + from.col;
+				const movingElem = ballElements.get(fromKey);
+				const TRANSIT_KEY = "__transit__";
+				if (movingElem) {
+					ballElements.delete(fromKey);
+					ballElements.set(TRANSIT_KEY, movingElem);
+				}
+
+				drawBalls();
+
+				animating = true;
+				animateBallMove(movingElem, to, path, () => {
+					// Remove transit element – executeMove will re-draw it at destination
+					if (movingElem) {
+						movingElem.remove();
+						ballElements.delete(TRANSIT_KEY);
+					}
+					executeMove(from, to, movingColor);
 				});
 			}
 
-			function executeMove(from, to) {
-				const color = board[from.row][from.col];
-				board[from.row][from.col] = null;
+			function executeMove(from, to, color) {
+				// board[from] is already null (cleared before animation)
+				turnLocked = true;
 				board[to.row][to.col] = color;
 				selected = null;
 				clearPathPreview();
@@ -487,11 +526,15 @@
 				setTimeout(() => {
 					if (isBoardFull()) {
 						finishGame();
+						turnLocked = false;
 						return;
 					}
 
 					if (firstClear >= BONUS_CLEAR_THRESHOLD) {
 						status("Bonus: zbito " + firstClear + " kulek, więc nie dodano 3 nowych.");
+						setTimeout(() => {
+							turnLocked = false;
+						}, firstClear > 0 ? 250 : 0);
 						return;
 					}
 
@@ -509,6 +552,10 @@
 						if (isBoardFull()) {
 							finishGame();
 						}
+
+						setTimeout(() => {
+							turnLocked = false;
+						}, secondClear > 0 ? 250 : 0);
 					}, 140);
 				}, 120);
 			}
@@ -553,7 +600,7 @@
 				for (let r = 0; r < SIZE; r++) {
 					for (let c = 0; c < SIZE; c++) {
 						const color = board[r][c];
-						if (color === null) {
+						if (!isValidColor(color)) {
 							continue;
 						}
 
@@ -590,6 +637,7 @@
 			}
 
 			function findPath(from, to) {
+				sanitizeBoard();
 				const queue = [[from.row, from.col]];
 				const visited = Array.from({ length: SIZE }, () => Array(SIZE).fill(false));
 				const prev = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
@@ -615,7 +663,7 @@
 							continue;
 						}
 
-						if (board[nr][nc] !== null && !(nr === to.row && nc === to.col)) {
+						if (isOccupiedCell(nr, nc) && !(nr === to.row && nc === to.col)) {
 							continue;
 						}
 
@@ -642,9 +690,7 @@
 				return path;
 			}
 
-			function animateBallMove(from, to, path, done) {
-				const key = from.row + "," + from.col;
-				const elem = ballElements.get(key);
+			function animateBallMove(elem, to, path, done) {
 				let finished = false;
 
 				const finishMove = () => {
@@ -658,7 +704,8 @@
 				};
 
 				if (!elem) {
-					finishMove();
+					animating = false;
+					done();
 					return;
 				}
 
@@ -704,12 +751,13 @@
 			}
 
 			function drawBalls() {
+				sanitizeBoard();
 				const newMap = new Map();
 
 				for (let r = 0; r < SIZE; r++) {
 					for (let c = 0; c < SIZE; c++) {
 						const color = board[r][c];
-						if (color === null) {
+						if (!isValidColor(color)) {
 							continue;
 						}
 
@@ -735,9 +783,15 @@
 				}
 
 				for (const [oldKey, oldElem] of ballElements.entries()) {
-					if (!newMap.has(oldKey)) {
+					if (!newMap.has(oldKey) && oldKey !== "__transit__") {
 						oldElem.remove();
 					}
+				}
+
+				// Preserve transit element across redraws during animation
+				const transit = ballElements.get("__transit__");
+				if (transit) {
+					newMap.set("__transit__", transit);
 				}
 
 				ballElements = newMap;
@@ -808,15 +862,34 @@
 			}
 
 			function getEmptyCells() {
+				sanitizeBoard();
 				const cells = [];
 				for (let r = 0; r < SIZE; r++) {
 					for (let c = 0; c < SIZE; c++) {
-						if (board[r][c] === null) {
+						if (!isOccupiedCell(r, c)) {
 							cells.push({ row: r, col: c });
 						}
 					}
 				}
 				return cells;
+			}
+
+			function isValidColor(value) {
+				return Number.isInteger(value) && value >= 0 && value < colorCount;
+			}
+
+			function isOccupiedCell(row, col) {
+				return isValidColor(board[row][col]);
+			}
+
+			function sanitizeBoard() {
+				for (let r = 0; r < SIZE; r++) {
+					for (let c = 0; c < SIZE; c++) {
+						if (!isValidColor(board[r][c])) {
+							board[r][c] = null;
+						}
+					}
+				}
 			}
 
 			function randomColor() {
@@ -904,6 +977,7 @@
 				selected = null;
 				score = 0;
 				animating = false;
+				turnLocked = false;
 				gameOver = false;
 				updateScore();
 				clearPathPreview();
@@ -919,6 +993,35 @@
 					status("Wybierz kulkę i kliknij wolne pole, jeśli istnieje droga.");
 				}, 420);
 			}
+
+			function newRandomTestGame(minFill = 0.3, maxFill = 0.4) {
+				board = makeEmptyBoard();
+				selected = null;
+				score = 0;
+				animating = false;
+				turnLocked = false;
+				gameOver = false;
+
+				const empties = getEmptyCells();
+				shuffle(empties);
+				const ratio = minFill + Math.random() * Math.max(0, maxFill - minFill);
+				const target = Math.max(1, Math.floor(SIZE * SIZE * ratio));
+
+				for (let i = 0; i < Math.min(target, empties.length); i++) {
+					const { row, col } = empties[i];
+					board[row][col] = randomColor();
+				}
+
+				sanitizeBoard();
+				updateScore();
+				clearPathPreview();
+				drawBalls();
+				status("Tryb testowy: losowe zapełnienie " + Math.round(ratio * 100) + "%.");
+			}
+
+			window.kulkiDebug = {
+				newRandomTestGame
+			};
 		})();
 	</script>
 </body>
