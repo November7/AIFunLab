@@ -457,14 +457,17 @@
 					return;
 				}
 
-				const path = findPath(selected, { row, col });
+				const from = { row: selected.row, col: selected.col };
+				const to = { row, col };
+
+				const path = findPath(from, to);
 				if (!path) {
 					indicateInvalid(row, col, "Brak drogi przez puste pola.");
 					return;
 				}
 
-				animateBallMove(selected, { row, col }, path, () => {
-					executeMove(selected, { row, col });
+				animateBallMove(from, to, path, () => {
+					executeMove(from, to);
 				});
 			}
 
@@ -642,8 +645,20 @@
 			function animateBallMove(from, to, path, done) {
 				const key = from.row + "," + from.col;
 				const elem = ballElements.get(key);
-				if (!elem) {
+				let finished = false;
+
+				const finishMove = () => {
+					if (finished) {
+						return;
+					}
+					finished = true;
+					elem?.classList.remove("moving");
+					animating = false;
 					done();
+				};
+
+				if (!elem) {
+					finishMove();
 					return;
 				}
 
@@ -651,9 +666,15 @@
 				elem.classList.add("moving");
 
 				const points = path.map(({ row, col }) => cellCenter(row, col));
+				if (points.length < 2) {
+					finishMove();
+					return;
+				}
+
 				const segmentMs = 95;
 				const duration = Math.max(90, (points.length - 1) * segmentMs);
 				const start = performance.now();
+				const fallbackTimer = setTimeout(finishMove, duration + 220);
 
 				const step = (time) => {
 					const elapsed = time - start;
@@ -674,9 +695,8 @@
 					if (t < 1) {
 						requestAnimationFrame(step);
 					} else {
-						elem.classList.remove("moving");
-						animating = false;
-						done();
+						clearTimeout(fallbackTimer);
+						finishMove();
 					}
 				};
 
