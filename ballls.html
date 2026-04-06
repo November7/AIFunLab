@@ -138,6 +138,14 @@
 			touch-action: manipulation;
 		}
 
+		#board.busy {
+			pointer-events: none;
+		}
+
+		.board-wrap.moving #board {
+			cursor: progress;
+		}
+
 		.status {
 			text-align: center;
 			font-size: 14px;
@@ -187,6 +195,7 @@
 
 		.ball.moving .ball-inner {
 			filter: drop-shadow(0 7px 9px #16382d56);
+			opacity: 0.58;
 		}
 
 		.ball.popping .ball-inner {
@@ -352,6 +361,9 @@
 			let isDarkTheme = false;
 			let cellElements = [];
 			let ballElements = new Map();
+			let activeMoveId = 0;
+			let gameEpoch = 0;
+			const pendingTimers = new Set();
 
 			restoreTheme();
 			initBoardSvg();
@@ -435,6 +447,14 @@
 			}
 
 			function onCellActivate(ev) {
+				if (!ev.isPrimary) {
+					return;
+				}
+
+				if (ev.pointerType === "mouse" && ev.button !== 0) {
+					return;
+				}
+
 				if (ev.cancelable) {
 					ev.preventDefault();
 				}
@@ -450,8 +470,11 @@
 
 				if (hasBall) {
 					if (selected && selected.row === row && selected.col === col) {
-						selected = null;
+						status("Ta kulka jest już zaznaczona. Wybierz puste pole docelowe.");
 					} else {
+						if (selected) {
+							status("Pole zajęte. Zmieniono zaznaczenie kulki.");
+						}
 						selected = { row, col };
 					}
 					drawBalls();
@@ -490,8 +513,12 @@
 
 				// Remap element to a transient key so drawBalls() won't touch it
 				const fromKey = from.row + "," + from.col;
-				const movingElem = ballElements.get(fromKey);
+				let movingElem = ballElements.get(fromKey);
 				const TRANSIT_KEY = "__transit__";
+				if (!movingElem && isValidColor(movingColor)) {
+					movingElem = createBallElement(from.row, from.col, movingColor);
+					ballsLayer.appendChild(movingElem);
+				}
 				if (movingElem) {
 					ballElements.delete(fromKey);
 					ballElements.set(TRANSIT_KEY, movingElem);
@@ -500,7 +527,11 @@
 				drawBalls();
 
 				animating = true;
-				animateBallMove(movingElem, to, path, () => {
+				const moveId = ++activeMoveId;
+				animateBallMove(movingElem, to, path, moveId, () => {
+					if (moveId !== activeMoveId) {
+						return;
+					}
 					// Remove transit element – executeMove will re-draw it at destination
 					if (movingElem) {
 						movingElem.remove();
@@ -523,7 +554,7 @@
 					status("Świetnie! Zbito " + firstClear + " kulek.");
 				}
 
-				setTimeout(() => {
+				deferByEpoch(() => {
 					if (isBoardFull()) {
 						finishGame();
 						turnLocked = false;
@@ -532,7 +563,7 @@
 
 					if (firstClear >= BONUS_CLEAR_THRESHOLD) {
 						status("Bonus: zbito " + firstClear + " kulek, więc nie dodano 3 nowych.");
-						setTimeout(() => {
+						deferByEpoch(() => {
 							turnLocked = false;
 						}, firstClear > 0 ? 250 : 0);
 						return;
@@ -543,7 +574,7 @@
 						status("Dodano " + spawned + " nowe kulki.");
 					}
 
-					setTimeout(() => {
+					deferByEpoch(() => {
 						const secondClear = clearCompletedLines();
 						if (secondClear > 0) {
 							status("Nowe kulki utworzyły linię: +" + secondClear + " kulek.");
@@ -553,7 +584,7 @@
 							finishGame();
 						}
 
-						setTimeout(() => {
+						deferByEpoch(() => {
 							turnLocked = false;
 						}, secondClear > 0 ? 250 : 0);
 					}, 140);
@@ -690,26 +721,29 @@
 				return path;
 			}
 
-			function animateBallMove(elem, to, path, done) {
+			function animateBallMove(elem, to, path, moveId, done) {
 				let finished = false;
 
 				const finishMove = () => {
-					if (finished) {
+					if (finished || moveId !== activeMoveId) {
 						return;
 					}
 					finished = true;
+					setBoardInteractionLocked(false);
 					elem?.classList.remove("moving");
 					animating = false;
 					done();
 				};
 
 				if (!elem) {
+					setBoardInteractionLocked(false);
 					animating = false;
 					done();
 					return;
 				}
 
 				animating = true;
+				setBoardInteractionLocked(true);
 				elem.classList.add("moving");
 
 				const points = path.map(({ row, col }) => cellCenter(row, col));
@@ -720,10 +754,17 @@
 
 				const segmentMs = 95;
 				const duration = Math.max(90, (points.length - 1) * segmentMs);
+				const startPoint = points[0];
+				elem.setAttribute("transform", `translate(${startPoint.x} ${startPoint.y})`);
+
 				const start = performance.now();
-				const fallbackTimer = setTimeout(finishMove, duration + 220);
+				const fallbackTimer = deferByEpoch(finishMove, Math.max(2400, duration + 800));
 
 				const step = (time) => {
+					if (moveId !== activeMoveId) {
+						return;
+					}
+
 					const elapsed = time - start;
 					const t = Math.min(1, elapsed / duration);
 					const raw = t * (points.length - 1);
@@ -742,7 +783,7 @@
 					if (t < 1) {
 						requestAnimationFrame(step);
 					} else {
-						clearTimeout(fallbackTimer);
+						cancelDeferred(fallbackTimer);
 						finishMove();
 					}
 				};
@@ -937,10 +978,44 @@
 					}
 				}
 
-				setTimeout(() => {
+				deferByEpoch(() => {
 					animating = false;
 					drawBalls();
 				}, 230);
+			}
+
+			function deferByEpoch(fn, ms) {
+				const capturedEpoch = gameEpoch;
+				const timerId = setTimeout(() => {
+					pendingTimers.delete(timerId);
+					if (capturedEpoch !== gameEpoch) {
+						return;
+					}
+					fn();
+				}, ms);
+				pendingTimers.add(timerId);
+				return timerId;
+			}
+
+			function cancelDeferred(timerId) {
+				if (!timerId) {
+					return;
+				}
+				clearTimeout(timerId);
+				pendingTimers.delete(timerId);
+			}
+
+			function clearDeferredTimers() {
+				for (const timerId of pendingTimers) {
+					clearTimeout(timerId);
+				}
+				pendingTimers.clear();
+			}
+
+			function setBoardInteractionLocked(locked) {
+				boardEl.classList.toggle("busy", locked);
+				boardWrap.classList.toggle("moving", locked);
+				boardEl.setAttribute("aria-busy", String(locked));
 			}
 
 			function inBounds(r, c) {
@@ -973,6 +1048,10 @@
 			}
 
 			function newGame() {
+				gameEpoch += 1;
+				clearDeferredTimers();
+				activeMoveId += 1;
+				setBoardInteractionLocked(false);
 				board = makeEmptyBoard();
 				selected = null;
 				score = 0;
@@ -985,7 +1064,7 @@
 
 				status("Start od pustej planszy. Za chwilę pojawią się pierwsze 3 kulki.");
 
-				setTimeout(() => {
+				deferByEpoch(() => {
 					if (gameOver) {
 						return;
 					}
@@ -995,6 +1074,10 @@
 			}
 
 			function newRandomTestGame(minFill = 0.3, maxFill = 0.4) {
+				gameEpoch += 1;
+				clearDeferredTimers();
+				activeMoveId += 1;
+				setBoardInteractionLocked(false);
 				board = makeEmptyBoard();
 				selected = null;
 				score = 0;
