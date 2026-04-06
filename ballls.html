@@ -72,6 +72,15 @@
 			padding: 14px;
 		}
 
+		.game-shell {
+			width: min(980px, 100%);
+			margin: 0 auto;
+			display: grid;
+			grid-template-columns: minmax(280px, 1fr) 220px;
+			gap: 14px;
+			align-items: start;
+		}
+
 		.menu {
 			width: min(760px, 100%);
 			margin: 0 auto;
@@ -121,10 +130,117 @@
 		}
 
 		.board-wrap {
-			width: min(760px, 96vw, calc(100dvh - 225px));
-			margin: 0 auto;
+			width: min(760px, 100%);
+			margin: 0;
 			position: relative;
 			animation: riseIn 420ms ease-out both;
+		}
+
+		.bonus-panel {
+			background: var(--panel);
+			border: 1px solid var(--menu-border);
+			border-radius: 16px;
+			padding: 10px;
+			box-shadow: 0 8px 20px #16312a1a;
+			backdrop-filter: blur(5px);
+		}
+
+		.bonus-title {
+			font-size: 14px;
+			font-weight: 800;
+			letter-spacing: 0.04em;
+			color: var(--muted);
+			text-transform: uppercase;
+			margin: 2px 0 8px;
+		}
+
+		.bonus-table {
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 13px;
+		}
+
+		.bonus-table td {
+			padding: 6px 4px;
+			border-bottom: 1px dashed #b8cebe;
+			vertical-align: middle;
+		}
+
+		.bonus-table tr:last-child td {
+			border-bottom: none;
+		}
+
+		.bonus-table .bonus-k {
+			font-weight: 700;
+			color: var(--ink);
+			white-space: nowrap;
+		}
+
+		.bonus-table .bonus-v {
+			text-align: right;
+			font-weight: 800;
+			color: var(--accent);
+		}
+
+		.bonus-actions {
+			display: grid;
+			gap: 8px;
+			margin-top: 10px;
+		}
+
+		.bonus-actions button {
+			border-radius: 10px;
+			border: 1px solid #9fc8b0;
+			background: var(--menu-btn-bg);
+			color: var(--ink);
+			font-size: 13px;
+			font-weight: 700;
+			padding: 7px 10px;
+			cursor: pointer;
+		}
+
+		.bonus-actions button:hover {
+			background: var(--menu-btn-hover);
+		}
+
+		.bonus-actions button:disabled {
+			opacity: 0.55;
+			cursor: not-allowed;
+		}
+
+		.bonus-actions button.active {
+			border-color: #d45a5a;
+			background: #ffe6e6;
+		}
+
+		.bonus-note {
+			margin-top: 8px;
+			font-size: 12px;
+			color: var(--muted);
+			line-height: 1.35;
+		}
+
+		.board-wrap.bonus-cross #board {
+			cursor: crosshair;
+		}
+
+		.line-pick-handle {
+			position: absolute;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			border: 1px solid #d15f5f;
+			background: #fff0f0d9;
+			color: #8b2f2f;
+			font-size: 11px;
+			font-weight: 700;
+			border-radius: 8px;
+			cursor: pointer;
+			padding: 0;
+		}
+
+		.board-wrap.bonus-line .line-pick-handle {
+			display: flex;
 		}
 
 		#board {
@@ -260,6 +376,11 @@
 				gap: 8px;
 			}
 
+			.game-shell {
+				grid-template-columns: 1fr;
+				gap: 10px;
+			}
+
 			.menu {
 				border-radius: 13px;
 				gap: 8px 10px;
@@ -272,7 +393,7 @@
 			}
 
 			.board-wrap {
-				width: min(98vw, calc(100dvh - 195px));
+				width: min(98vw, 100%);
 			}
 
 			.footer {
@@ -306,26 +427,56 @@
 			<div class="score" id="score">Punkty: 0</div>
 		</div>
 
-		<div class="board-wrap">
-			<svg id="board" viewBox="0 0 638 638" role="img" aria-label="Plansza gry w kulki">
-				<g id="grid-layer"></g>
-				<g id="path-layer"></g>
-				<g id="balls-layer"></g>
-			</svg>
-			<div class="status" id="status"></div>
+		<div class="game-shell">
+			<div class="board-wrap">
+				<svg id="board" viewBox="0 0 638 638" role="img" aria-label="Plansza gry w kulki">
+					<g id="grid-layer"></g>
+					<g id="path-layer"></g>
+					<g id="balls-layer"></g>
+				</svg>
+				<div class="status" id="status"></div>
+			</div>
+
+			<aside class="bonus-panel" aria-label="Panel bonusów">
+				<div class="bonus-title">Bonusy</div>
+				<table class="bonus-table" aria-label="Tabela bonusów">
+					<tr>
+						<td class="bonus-k">Linia 6+</td>
+						<td class="bonus-v">Auto: brak spawnu</td>
+					</tr>
+					<tr>
+						<td class="bonus-k">Linia 7+</td>
+						<td class="bonus-v" id="bonus-x2">0 ruchy</td>
+					</tr>
+					<tr>
+						<td class="bonus-k">Linia 8+</td>
+						<td class="bonus-v" id="bonus-ball">0</td>
+					</tr>
+					<tr>
+						<td class="bonus-k">Linia 9+</td>
+						<td class="bonus-v" id="bonus-line">0</td>
+					</tr>
+				</table>
+
+				<div class="bonus-actions">
+					<button id="use-ball-bonus" type="button">Użyj: skasuj kulkę</button>
+					<button id="use-line-bonus" type="button">Użyj: skasuj linię</button>
+				</div>
+
+				<div class="bonus-note" id="bonus-note">Aktywuj bonus, a potem wskaż cel na planszy.</div>
+			</aside>
 		</div>
 
-		<div class="footer">Ułóż minimum 5 kulek w linii: poziomo, pionowo lub po skosie. Bonus: po zbiciu co najmniej 6 kulek nie pojawiają się 3 nowe kulki.</div>
+		<div class="footer">Ułóż minimum 5 kulek w linii: poziomo, pionowo lub po skosie. Za linię 6+ nie pojawia się nowa kulka, 7+ daje x2 na 3 ruchy, 8+ daje kasowanie kulki, 9+ kasowanie linii.</div>
 	</div>
 
 	<script>
 		(() => {
-			const SIZE = 11;
-			const CELL = 54;
+			const SIZE = 9;
+			const CELL = 66;
 			const PADDING = 22;
 			const RADIUS = 18;
-			const SPAWN_PER_TURN = 3;
-			const BONUS_CLEAR_THRESHOLD = 6;
+			const SPAWN_PER_TURN = 1;
 
 			const SVG_NS = "http://www.w3.org/2000/svg";
 			const gridLayer = document.getElementById("grid-layer");
@@ -339,6 +490,12 @@
 			const colorsSelect = document.getElementById("colors-count");
 			const scoreEl = document.getElementById("score");
 			const statusEl = document.getElementById("status");
+			const bonusX2El = document.getElementById("bonus-x2");
+			const bonusBallEl = document.getElementById("bonus-ball");
+			const bonusLineEl = document.getElementById("bonus-line");
+			const useBallBonusBtn = document.getElementById("use-ball-bonus");
+			const useLineBonusBtn = document.getElementById("use-line-bonus");
+			const bonusNoteEl = document.getElementById("bonus-note");
 
 			const PALETTE = [
 				["#de5147", "#b3352f"],
@@ -364,6 +521,13 @@
 			let activeMoveId = 0;
 			let gameEpoch = 0;
 			const pendingTimers = new Set();
+			let doublePointsMoves = 0;
+			let ballDeleteCharges = 0;
+			let lineDeleteCharges = 0;
+			let skipSpawnCharges = 0;
+			let activePower = null;
+			let scoreMultiplierThisTurn = 1;
+			const linePickHandles = [];
 
 			restoreTheme();
 			initBoardSvg();
@@ -376,6 +540,8 @@
 				randomTestBtn.addEventListener("click", () => {
 					newRandomTestGame(0.3, 0.4);
 				});
+				useBallBonusBtn.addEventListener("click", activateBallDeleteBonus);
+				useLineBonusBtn.addEventListener("click", activateLineDeleteBonus);
 				themeToggleBtn.addEventListener("click", () => {
 					setTheme(!isDarkTheme);
 				});
@@ -406,11 +572,13 @@
 				const vw = Math.max(320, window.innerWidth);
 				const vh = Math.max(420, window.innerHeight);
 				const sidePadding = vw < 700 ? 12 : 28;
-				const headerApprox = vw < 640 ? 180 : 220;
-				const target = Math.min(760, vw - sidePadding, vh - headerApprox);
+				const sidebarWidth = vw < 640 ? 0 : 240;
+				const headerApprox = vw < 640 ? 260 : 220;
+				const target = Math.min(760, vw - sidePadding - sidebarWidth, vh - headerApprox);
 				const size = Math.max(280, target);
 				boardWrap.style.width = size + "px";
 				boardEl.style.maxWidth = "100%";
+				layoutLinePickHandles(size);
 			}
 
 			function makeEmptyBoard() {
@@ -419,6 +587,7 @@
 
 			function initBoardSvg() {
 				gridLayer.innerHTML = "";
+				pathLayer.innerHTML = "";
 				cellElements = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
 
 				for (let r = 0; r < SIZE; r++) {
@@ -437,6 +606,87 @@
 						cellElements[r][c] = rect;
 					}
 				}
+
+				initLinePickHandles();
+			}
+
+			function initLinePickHandles() {
+				for (const h of linePickHandles) {
+					h.remove();
+				}
+				linePickHandles.length = 0;
+
+				for (let i = 0; i < SIZE; i++) {
+					const rowBtn = document.createElement("button");
+					rowBtn.type = "button";
+					rowBtn.className = "line-pick-handle";
+					rowBtn.textContent = "R" + (i + 1);
+					rowBtn.dataset.kind = "row";
+					rowBtn.dataset.index = String(i);
+					rowBtn.addEventListener("click", onLineHandleClick);
+					boardWrap.appendChild(rowBtn);
+					linePickHandles.push(rowBtn);
+
+					const colBtn = document.createElement("button");
+					colBtn.type = "button";
+					colBtn.className = "line-pick-handle";
+					colBtn.textContent = "C" + (i + 1);
+					colBtn.dataset.kind = "col";
+					colBtn.dataset.index = String(i);
+					colBtn.addEventListener("click", onLineHandleClick);
+					boardWrap.appendChild(colBtn);
+					linePickHandles.push(colBtn);
+				}
+
+				layoutLinePickHandles(boardWrap.clientWidth || 638);
+			}
+
+			function layoutLinePickHandles(sizePx) {
+				if (linePickHandles.length === 0) {
+					return;
+				}
+
+				const step = sizePx / SIZE;
+				const rowW = Math.max(22, Math.min(32, step * 0.45));
+				const rowH = Math.max(16, Math.min(22, step * 0.34));
+				const colW = Math.max(24, Math.min(34, step * 0.55));
+				const colH = Math.max(16, Math.min(22, step * 0.34));
+
+				for (const btn of linePickHandles) {
+					const index = Number(btn.dataset.index);
+					if (btn.dataset.kind === "row") {
+						btn.style.width = rowW + "px";
+						btn.style.height = rowH + "px";
+						btn.style.left = sizePx + 8 + "px";
+						btn.style.top = index * step + (step - rowH) / 2 + "px";
+					} else {
+						btn.style.width = colW + "px";
+						btn.style.height = colH + "px";
+						btn.style.left = index * step + (step - colW) / 2 + "px";
+						btn.style.top = sizePx + 8 + "px";
+					}
+				}
+			}
+
+			function onLineHandleClick(ev) {
+				if (activePower !== "line" || animating || gameOver || turnLocked) {
+					return;
+				}
+
+				const kind = ev.currentTarget.dataset.kind;
+				const index = Number(ev.currentTarget.dataset.index);
+				const removed = clearLine(kind, index);
+
+				lineDeleteCharges = Math.max(0, lineDeleteCharges - 1);
+				setActivePower(null);
+				awardBonusPointsForClear(removed, "line");
+				updateBonusPanel();
+
+				status(
+					removed > 0
+						? "Bonus: skasowano " + removed + " kulek z linii."
+						: "Bonus linii użyty. Wybrana linia była pusta."
+				);
 			}
 
 			function cellCenter(row, col) {
@@ -467,6 +717,26 @@
 				const col = Number(ev.currentTarget.dataset.col);
 				sanitizeBoard();
 				const hasBall = isOccupiedCell(row, col);
+
+				if (activePower === "ball") {
+					if (!hasBall) {
+						indicateInvalid(row, col, "Bonus X wymaga wskazania kulki.");
+						return;
+					}
+
+					const removed = clearSingleBall(row, col);
+					ballDeleteCharges = Math.max(0, ballDeleteCharges - 1);
+					setActivePower(null);
+					awardBonusPointsForClear(removed, "ball");
+					updateBonusPanel();
+					status("Bonus: skasowano 1 kulkę.");
+					return;
+				}
+
+				if (activePower === "line") {
+					status("Wybierz linię przyciskiem R/C obok planszy.", true);
+					return;
+				}
 
 				if (hasBall) {
 					if (selected && selected.row === row && selected.col === col) {
@@ -544,28 +814,38 @@
 			function executeMove(from, to, color) {
 				// board[from] is already null (cleared before animation)
 				turnLocked = true;
+				scoreMultiplierThisTurn = 1;
+				if (doublePointsMoves > 0) {
+					scoreMultiplierThisTurn = 2;
+					doublePointsMoves -= 1;
+				}
 				board[to.row][to.col] = color;
 				selected = null;
 				clearPathPreview();
 				drawBalls();
+				updateBonusPanel();
 
-				const firstClear = clearCompletedLines();
-				if (firstClear > 0) {
-					status("Świetnie! Zbito " + firstClear + " kulek.");
+				const firstClear = clearCompletedLines("move");
+				if (firstClear.removed > 0) {
+					status("Świetnie! Zbito " + firstClear.removed + " kulek.");
 				}
 
 				deferByEpoch(() => {
 					if (isBoardFull()) {
 						finishGame();
+						scoreMultiplierThisTurn = 1;
 						turnLocked = false;
 						return;
 					}
 
-					if (firstClear >= BONUS_CLEAR_THRESHOLD) {
-						status("Bonus: zbito " + firstClear + " kulek, więc nie dodano 3 nowych.");
+					if (skipSpawnCharges > 0) {
+						skipSpawnCharges -= 1;
+						updateBonusPanel();
+						status("Bonus 6+: w tym ruchu nie dodano nowej kulki.");
 						deferByEpoch(() => {
+							scoreMultiplierThisTurn = 1;
 							turnLocked = false;
-						}, firstClear > 0 ? 250 : 0);
+						}, firstClear.removed > 0 ? 250 : 0);
 						return;
 					}
 
@@ -575,9 +855,9 @@
 					}
 
 					deferByEpoch(() => {
-						const secondClear = clearCompletedLines();
-						if (secondClear > 0) {
-							status("Nowe kulki utworzyły linię: +" + secondClear + " kulek.");
+						const secondClear = clearCompletedLines("spawn");
+						if (secondClear.removed > 0) {
+							status("Nowa kulka utworzyła linię: +" + secondClear.removed + " kulek.");
 						}
 
 						if (isBoardFull()) {
@@ -585,23 +865,28 @@
 						}
 
 						deferByEpoch(() => {
+							scoreMultiplierThisTurn = 1;
 							turnLocked = false;
-						}, secondClear > 0 ? 250 : 0);
+						}, secondClear.removed > 0 ? 250 : 0);
 					}, 140);
 				}, 120);
 			}
 
-			function clearCompletedLines() {
+			function clearCompletedLines(source) {
 				const lines = collectLinesToClear();
 				if (lines.length === 0) {
-					return 0;
+					return { removed: 0, longest: 0, longLines: 0 };
 				}
 
 				const toRemove = new Set();
-				let earned = 0;
+				let longest = 0;
+				let longLines = 0;
 
 				for (const line of lines) {
-					earned += pointsForLine(line.length);
+					longest = Math.max(longest, line.length);
+					if (line.length >= 6) {
+						longLines += 1;
+					}
 					for (const [r, c] of line.cells) {
 						toRemove.add(r + "," + c);
 					}
@@ -612,10 +897,24 @@
 					board[r][c] = null;
 				}
 
-				score += earned;
-				updateScore();
+				awardPointsFromLines(lines);
 				animatePopping(toRemove);
-				return toRemove.size;
+
+				grantBonusesFromLongestLine(longest);
+
+				if (longLines >= 2) {
+					const extra = clearEntireBoardForCombo();
+					if (extra > 0) {
+						status("Combo 2x6+: wyczyszczono całą planszę i skasowano " + extra + " dodatkowych kulek.");
+					}
+				}
+
+				if (source === "move" && longest >= 6) {
+					skipSpawnCharges += 1;
+				}
+
+				updateBonusPanel();
+				return { removed: toRemove.size, longest, longLines };
 			}
 
 			function collectLinesToClear() {
@@ -663,8 +962,168 @@
 			}
 
 			function pointsForLine(length) {
-				const len = Math.max(5, Math.min(11, length));
-				return len * len - 15;
+				if (length >= 9) {
+					return 180;
+				}
+				if (length === 8) {
+					return 110;
+				}
+				if (length === 7) {
+					return 64;
+				}
+				if (length === 6) {
+					return 33;
+				}
+				return 14;
+			}
+
+			function awardPointsFromLines(lines) {
+				let total = 0;
+				for (const line of lines) {
+					total += pointsForLine(line.length);
+				}
+				addScore(total);
+			}
+
+			function grantBonusesFromLongestLine(longest) {
+				if (longest >= 7) {
+					doublePointsMoves += 3;
+				}
+				if (longest >= 8) {
+					ballDeleteCharges += 1;
+				}
+				if (longest >= 9) {
+					lineDeleteCharges += 1;
+				}
+			}
+
+			function clearSingleBall(row, col) {
+				if (!isOccupiedCell(row, col)) {
+					return 0;
+				}
+				board[row][col] = null;
+				drawBalls();
+				return 1;
+			}
+
+			function clearLine(kind, index) {
+				let removed = 0;
+				if (kind === "row") {
+					for (let c = 0; c < SIZE; c++) {
+						if (isOccupiedCell(index, c)) {
+							board[index][c] = null;
+							removed += 1;
+						}
+					}
+				} else {
+					for (let r = 0; r < SIZE; r++) {
+						if (isOccupiedCell(r, index)) {
+							board[r][index] = null;
+							removed += 1;
+						}
+					}
+				}
+
+				drawBalls();
+				return removed;
+			}
+
+			function clearEntireBoardForCombo() {
+				let removed = 0;
+				for (let r = 0; r < SIZE; r++) {
+					for (let c = 0; c < SIZE; c++) {
+						if (isOccupiedCell(r, c)) {
+							board[r][c] = null;
+							removed += 1;
+						}
+					}
+				}
+
+				if (removed > 0) {
+					addScore(80 + removed * 6);
+					drawBalls();
+				}
+
+				return removed;
+			}
+
+			function awardBonusPointsForClear(removed, mode) {
+				if (removed <= 0) {
+					return;
+				}
+
+				if (mode === "ball") {
+					addScore(17);
+					return;
+				}
+
+				if (removed <= 2) {
+					addScore(20);
+					return;
+				}
+
+				if (removed <= 4) {
+					addScore(34);
+					return;
+				}
+
+				if (removed <= 6) {
+					addScore(52);
+					return;
+				}
+
+				addScore(78);
+			}
+
+			function addScore(base) {
+				if (base <= 0) {
+					return;
+				}
+				score += base * scoreMultiplierThisTurn;
+				updateScore();
+			}
+
+			function activateBallDeleteBonus() {
+				if (ballDeleteCharges <= 0) {
+					status("Brak bonusu kasowania kulki.", true);
+					return;
+				}
+				setActivePower(activePower === "ball" ? null : "ball");
+				status(activePower === "ball" ? "Kliknij kulkę, aby ją skasować." : "Bonus anulowany.");
+			}
+
+			function activateLineDeleteBonus() {
+				if (lineDeleteCharges <= 0) {
+					status("Brak bonusu kasowania linii.", true);
+					return;
+				}
+				setActivePower(activePower === "line" ? null : "line");
+				status(activePower === "line" ? "Wybierz R1-R9 lub C1-C9 przy planszy." : "Bonus anulowany.");
+			}
+
+			function setActivePower(next) {
+				activePower = next;
+				boardWrap.classList.toggle("bonus-cross", activePower === "ball");
+				boardWrap.classList.toggle("bonus-line", activePower === "line");
+				useBallBonusBtn.classList.toggle("active", activePower === "ball");
+				useLineBonusBtn.classList.toggle("active", activePower === "line");
+			}
+
+			function updateBonusPanel() {
+				bonusX2El.textContent = doublePointsMoves + " ruchy";
+				bonusBallEl.textContent = String(ballDeleteCharges);
+				bonusLineEl.textContent = String(lineDeleteCharges);
+
+				useBallBonusBtn.disabled = ballDeleteCharges <= 0;
+				useLineBonusBtn.disabled = lineDeleteCharges <= 0;
+
+				if (activePower === "ball") {
+					bonusNoteEl.textContent = "Tryb X: kliknij dowolną kulkę na planszy.";
+				} else if (activePower === "line") {
+					bonusNoteEl.textContent = "Tryb linii: użyj przycisków R/C obok planszy.";
+				} else {
+					bonusNoteEl.textContent = "Linia 6+ działa automatycznie i nie jest magazynowana.";
+				}
 			}
 
 			function findPath(from, to) {
@@ -1058,11 +1517,18 @@
 				animating = false;
 				turnLocked = false;
 				gameOver = false;
+				doublePointsMoves = 0;
+				ballDeleteCharges = 0;
+				lineDeleteCharges = 0;
+				skipSpawnCharges = 0;
+				scoreMultiplierThisTurn = 1;
+				setActivePower(null);
 				updateScore();
+				updateBonusPanel();
 				clearPathPreview();
 				drawBalls();
 
-				status("Start od pustej planszy. Za chwilę pojawią się pierwsze 3 kulki.");
+				status("Start od pustej planszy. Za chwilę pojawi się pierwsza kulka.");
 
 				deferByEpoch(() => {
 					if (gameOver) {
@@ -1084,6 +1550,12 @@
 				animating = false;
 				turnLocked = false;
 				gameOver = false;
+				doublePointsMoves = 0;
+				ballDeleteCharges = 0;
+				lineDeleteCharges = 0;
+				skipSpawnCharges = 0;
+				scoreMultiplierThisTurn = 1;
+				setActivePower(null);
 
 				const empties = getEmptyCells();
 				shuffle(empties);
@@ -1097,6 +1569,7 @@
 
 				sanitizeBoard();
 				updateScore();
+				updateBonusPanel();
 				clearPathPreview();
 				drawBalls();
 				status("Tryb testowy: losowe zapełnienie " + Math.round(ratio * 100) + "%.");
