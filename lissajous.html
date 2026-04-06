@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="pl">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Generator Krzywych Lissajous</title>
+	<style>
+		:root {
+			--bg-0: #f4efe3;
+			--bg-1: #e6f2e1;
+			--panel: #fffef8d9;
+			--line: #1f3e35;
+			--accent: #136f63;
+			--accent-soft: #d6f3ec;
+			--muted: #5f7269;
+			--canvas: #fffdf5;
+			--axes: #dfe9df;
+			--border: #cddccf;
+			--danger: #a84848;
+			--control-bg: #fbfffb;
+			--control-border: #97b8a2;
+			--control-ink: #1f3e35;
+			--start-bg: #c7f2d5;
+			--start-border: #86b697;
+			--start-ink: #143b2a;
+			--stop-bg: #ffeac8;
+			--stop-border: #cfb07e;
+			--stop-ink: #4d3819;
+			--clear-bg: #ffd8d8;
+			--clear-border: #d29a9a;
+			--clear-ink: #7f2525;
+			--theme-bg: #d7e6ff;
+			--theme-border: #9cb1d8;
+			--theme-ink: #1f3150;
+		}
+
+		body.theme-dark {
+			--bg-0: #141d25;
+			--bg-1: #1f2e2b;
+			--panel: #101a22d9;
+			--line: #e3efe9;
+			--accent: #57c8b2;
+			--accent-soft: #173c35;
+			--muted: #afc3bc;
+			--canvas: #0f171d;
+			--axes: #2f4552;
+			--border: #35515f;
+			--danger: #ff9494;
+			--control-bg: #1a2831;
+			--control-border: #456170;
+			--control-ink: #e7f4ef;
+			--start-bg: #1c4a32;
+			--start-border: #387356;
+			--start-ink: #dcf9ea;
+			--stop-bg: #5e4420;
+			--stop-border: #8a6534;
+			--stop-ink: #ffe9c6;
+			--clear-bg: #5a2a2a;
+			--clear-border: #8a4a4a;
+			--clear-ink: #ffd8d8;
+			--theme-bg: #243651;
+			--theme-border: #4d6a8f;
+			--theme-ink: #e0ebff;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			height: 100%;
+			margin: 0;
+			font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+			background: linear-gradient(135deg, var(--bg-0), var(--bg-1));
+			color: var(--line);
+		}
+
+		.app {
+			height: 100%;
+			display: grid;
+			grid-template-rows: auto 1fr auto;
+			gap: 10px;
+			padding: 12px;
+		}
+
+		.controls {
+			width: min(1140px, 100%);
+			margin: 0 auto;
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 8px;
+			padding: 10px;
+			background: var(--panel);
+			border: 1px solid var(--border);
+			border-radius: 14px;
+			box-shadow: 0 8px 20px #243b2d1a;
+			backdrop-filter: blur(4px);
+		}
+
+		.controls .spacer {
+			flex: 1 1 auto;
+		}
+
+		button,
+		input,
+		select {
+			border: 1px solid var(--control-border);
+			border-radius: 10px;
+			padding: 7px 10px;
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--control-ink);
+			background: var(--control-bg);
+		}
+
+		label {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			font-size: 13px;
+			font-weight: 700;
+			color: var(--muted);
+		}
+
+		input[type="number"] {
+			width: 72px;
+		}
+
+		input[type="range"] {
+			padding: 0;
+			width: 120px;
+			accent-color: var(--accent);
+		}
+
+		button {
+			cursor: pointer;
+			background: var(--accent-soft);
+		}
+
+		button:hover {
+			filter: brightness(0.98);
+		}
+
+		button:active {
+			transform: translateY(1px);
+		}
+
+		#startBtn {
+			background: var(--start-bg);
+			border-color: var(--start-border);
+			color: var(--start-ink);
+		}
+
+		#stopBtn {
+			background: var(--stop-bg);
+			border-color: var(--stop-border);
+			color: var(--stop-ink);
+		}
+
+		#clearBtn {
+			background: var(--clear-bg);
+			border-color: var(--clear-border);
+			color: var(--clear-ink);
+		}
+
+		#themeBtn {
+			background: var(--theme-bg);
+			border-color: var(--theme-border);
+			color: var(--theme-ink);
+		}
+
+		.stage {
+			width: min(1140px, 100%);
+			margin: 0 auto;
+			border: 1px solid var(--border);
+			border-radius: 18px;
+			overflow: hidden;
+			box-shadow: 0 16px 34px #1c372c22;
+			background: var(--canvas);
+		}
+
+		canvas {
+			width: 100%;
+			height: 100%;
+			display: block;
+		}
+
+		.status {
+			width: min(1140px, 100%);
+			margin: 0 auto;
+			font-size: 13px;
+			font-weight: 700;
+			color: var(--muted);
+			text-align: center;
+			min-height: 18px;
+		}
+
+		@media (max-width: 860px) {
+			.app {
+				padding: 8px;
+				gap: 8px;
+			}
+
+			.controls {
+				border-radius: 12px;
+				padding: 8px;
+				gap: 6px;
+			}
+
+			label {
+				font-size: 12px;
+			}
+
+			button,
+			input,
+			select {
+				font-size: 12px;
+				padding: 6px 8px;
+			}
+
+			.stage {
+				border-radius: 14px;
+			}
+		}
+	</style>
+</head>
+<body>
+	<div class="app">
+		<div class="controls">
+			<button id="startBtn" type="button">Start</button>
+			<button id="stopBtn" type="button">Stop</button>
+			<button id="clearBtn" type="button">Clear</button>
+			<button id="themeBtn" type="button" aria-pressed="false">Dark mode</button>
+
+			<label>
+				a
+				<input id="freqA" type="number" min="0.1" max="40" step="0.1" value="3" />
+			</label>
+			<label>
+				b
+				<input id="freqB" type="number" min="0.1" max="40" step="0.1" value="2" />
+			</label>
+			<label>
+				delta (deg)
+				<input id="deltaDeg" type="number" min="0" max="360" step="0.1" value="90" />
+			</label>
+			<label>
+				X amp
+				<input id="ampX" type="range" min="10" max="95" step="0.1" value="85" />
+			</label>
+			<label>
+				Y amp
+				<input id="ampY" type="range" min="10" max="95" step="0.1" value="85" />
+			</label>
+			<label>
+				speed
+				<input id="speed" type="range" min="0.0008" max="0.03" step="0.0002" value="0.007" />
+			</label>
+			<label>
+				line
+				<input id="lineWidth" type="range" min="1" max="6" step="0.1" value="2" />
+			</label>
+			<label>
+				kolor
+				<select id="colorMode">
+					<option value="teal" selected>teal</option>
+					<option value="sunset">sunset</option>
+					<option value="mono">mono</option>
+				</select>
+			</label>
+
+			<div class="spacer"></div>
+		</div>
+
+		<div class="stage">
+			<canvas id="plotCanvas" aria-label="Generator krzywych Lissajous"></canvas>
+		</div>
+
+		<div id="status" class="status"></div>
+	</div>
+
+	<script>
+		(() => {
+			const canvas = document.getElementById("plotCanvas");
+			const stage = document.querySelector(".stage");
+			const statusEl = document.getElementById("status");
+			const ctx = canvas.getContext("2d", { alpha: false });
+
+			const startBtn = document.getElementById("startBtn");
+			const stopBtn = document.getElementById("stopBtn");
+			const clearBtn = document.getElementById("clearBtn");
+			const themeBtn = document.getElementById("themeBtn");
+
+			const freqAInput = document.getElementById("freqA");
+			const freqBInput = document.getElementById("freqB");
+			const deltaDegInput = document.getElementById("deltaDeg");
+			const ampXInput = document.getElementById("ampX");
+			const ampYInput = document.getElementById("ampY");
+			const speedInput = document.getElementById("speed");
+			const lineWidthInput = document.getElementById("lineWidth");
+			const colorModeSelect = document.getElementById("colorMode");
+
+			let rafId = null;
+			let running = false;
+			let t = 0;
+			let prevPoint = null;
+			let dpr = Math.max(1, window.devicePixelRatio || 1);
+
+			function clamp(n, min, max) {
+				return Math.max(min, Math.min(max, n));
+			}
+
+			function getParams() {
+				const a = clamp(Number(freqAInput.value) || 1, 0.1, 40);
+				const b = clamp(Number(freqBInput.value) || 1, 0.1, 40);
+				const deltaDeg = clamp(Number(deltaDegInput.value) || 0, 0, 360);
+				const ampX = clamp(Number(ampXInput.value) || 85, 10, 95) / 100;
+				const ampY = clamp(Number(ampYInput.value) || 85, 10, 95) / 100;
+				const speed = clamp(Number(speedInput.value) || 0.007, 0.0008, 0.03);
+				const lineWidth = clamp(Number(lineWidthInput.value) || 2, 1, 6);
+				const colorMode = colorModeSelect.value;
+
+				return {
+					a,
+					b,
+					delta: (deltaDeg * Math.PI) / 180,
+					ampX,
+					ampY,
+					speed,
+					lineWidth,
+					colorMode
+				};
+			}
+
+			function colorFor(mode, phase) {
+				if (mode === "mono") {
+					return "#234f45";
+				}
+				if (mode === "sunset") {
+					const hue = 18 + ((Math.sin(phase * 0.65) + 1) * 0.5) * 45;
+					return `hsl(${hue} 88% 52%)`;
+				}
+				const hue = 160 + ((Math.sin(phase * 0.8) + 1) * 0.5) * 70;
+				return `hsl(${hue} 72% 36%)`;
+			}
+
+			function resizeCanvas() {
+				dpr = Math.max(1, window.devicePixelRatio || 1);
+				const rect = stage.getBoundingClientRect();
+				const width = Math.max(300, Math.floor(rect.width));
+				const height = Math.max(300, Math.floor(window.innerHeight - 220));
+				stage.style.height = `${height}px`;
+
+				canvas.width = Math.floor(width * dpr);
+				canvas.height = Math.floor(height * dpr);
+				canvas.style.width = `${width}px`;
+				canvas.style.height = `${height}px`;
+
+				ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+				clearCanvas();
+			}
+
+			function clearCanvas() {
+				const styles = getComputedStyle(document.body);
+				ctx.fillStyle = styles.getPropertyValue("--canvas").trim() || "#fffdf5";
+				ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+				ctx.strokeStyle = styles.getPropertyValue("--axes").trim() || "#dfe9df";
+				ctx.lineWidth = 1;
+				ctx.beginPath();
+				ctx.moveTo(canvas.width / dpr / 2, 0);
+				ctx.lineTo(canvas.width / dpr / 2, canvas.height / dpr);
+				ctx.moveTo(0, canvas.height / dpr / 2);
+				ctx.lineTo(canvas.width / dpr, canvas.height / dpr / 2);
+				ctx.stroke();
+
+				prevPoint = null;
+				t = 0;
+				setStatus("Wyczyszczono. Ustaw parametry i kliknij Start.");
+			}
+
+			function computePoint(params, phase) {
+				const width = canvas.width / dpr;
+				const height = canvas.height / dpr;
+				const radiusX = (width * 0.5 - 22) * params.ampX;
+				const radiusY = (height * 0.5 - 22) * params.ampY;
+
+				return {
+					x: width / 2 + radiusX * Math.sin(params.a * phase + params.delta),
+					y: height / 2 + radiusY * Math.sin(params.b * phase)
+				};
+			}
+
+			function drawFrame() {
+				if (!running) {
+					return;
+				}
+
+				const params = getParams();
+				const point = computePoint(params, t);
+
+				if (!prevPoint) {
+					prevPoint = point;
+				}
+
+				ctx.strokeStyle = colorFor(params.colorMode, t);
+				ctx.lineWidth = params.lineWidth;
+				ctx.lineCap = "round";
+				ctx.beginPath();
+				ctx.moveTo(prevPoint.x, prevPoint.y);
+				ctx.lineTo(point.x, point.y);
+				ctx.stroke();
+
+				prevPoint = point;
+				t += params.speed;
+
+				rafId = requestAnimationFrame(drawFrame);
+			}
+
+			function setStatus(text) {
+				statusEl.textContent = text;
+			}
+
+			function start() {
+				if (running) {
+					return;
+				}
+				running = true;
+				setStatus("Rysowanie... Stop zatrzymuje, Clear czyści ekran.");
+				rafId = requestAnimationFrame(drawFrame);
+			}
+
+			function stop() {
+				running = false;
+				if (rafId) {
+					cancelAnimationFrame(rafId);
+					rafId = null;
+				}
+				setStatus("Zatrzymano.");
+			}
+
+			function setTheme(dark) {
+				document.body.classList.toggle("theme-dark", dark);
+				themeBtn.textContent = dark ? "Light mode" : "Dark mode";
+				themeBtn.setAttribute("aria-pressed", String(dark));
+				localStorage.setItem("lissajous-theme", dark ? "dark" : "light");
+				clearCanvas();
+			}
+
+			function restoreTheme() {
+				const saved = localStorage.getItem("lissajous-theme");
+				setTheme(saved === "dark");
+			}
+
+			startBtn.addEventListener("click", start);
+			stopBtn.addEventListener("click", stop);
+			clearBtn.addEventListener("click", () => {
+				clearCanvas();
+			});
+			themeBtn.addEventListener("click", () => {
+				setTheme(!document.body.classList.contains("theme-dark"));
+			});
+
+			for (const el of [
+				freqAInput,
+				freqBInput,
+				deltaDegInput,
+				ampXInput,
+				ampYInput,
+				speedInput,
+				lineWidthInput,
+				colorModeSelect
+			]) {
+				el.addEventListener("change", () => {
+					if (!running) {
+						setStatus("Parametry zaktualizowane. Kliknij Start.");
+					}
+				});
+			}
+
+			window.addEventListener("resize", resizeCanvas);
+			restoreTheme();
+			resizeCanvas();
+		})();
+	</script>
+</body>
+</html>
