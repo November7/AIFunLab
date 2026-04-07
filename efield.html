@@ -132,6 +132,9 @@
 			width: 100%;
 			height: 100%;
 			cursor: crosshair;
+			touch-action: none;
+			-webkit-user-select: none;
+			user-select: none;
 		}
 
 		.legend {
@@ -514,6 +517,7 @@
 		}
 
 		function onPointerDown(event) {
+			event.preventDefault();
 			const pointer = getPointerPosition(event);
 			const hitConductor = getConductorAt(pointer.x, pointer.y);
 
@@ -533,6 +537,7 @@
 		}
 
 		function onPointerMove(event) {
+			event.preventDefault();
 			if (!draggingConductorId) {
 				return;
 			}
@@ -556,6 +561,9 @@
 		}
 
 		function stopDragging(event) {
+			if (event) {
+				event.preventDefault();
+			}
 			if (draggingConductorId && event) {
 				canvas.releasePointerCapture(event.pointerId);
 			}
