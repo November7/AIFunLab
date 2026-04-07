@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Symulator linii pola wokół przewodnika</title>
+	<style>
+		:root {
+			--bg-1: #0a1220;
+			--bg-2: #04070d;
+			--panel: rgba(10, 20, 36, 0.82);
+			--panel-border: rgba(171, 205, 255, 0.16);
+			--text: #eef4ff;
+			--muted: #9fb5cf;
+			--accent: #f5cd68;
+			--red: #ff6a61;
+			--blue: #58a8ff;
+			--grid: rgba(151, 183, 219, 0.12);
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			margin: 0;
+			width: 100%;
+			height: 100%;
+			font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+			color: var(--text);
+			background:
+				radial-gradient(circle at top, rgba(84, 131, 245, 0.2), transparent 32%),
+				linear-gradient(180deg, var(--bg-1) 0%, #09101c 45%, var(--bg-2) 100%);
+		}
+
+		body {
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
+
+		.toolbar {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+			padding: 14px 18px;
+			background: var(--panel);
+			backdrop-filter: blur(18px);
+			border-bottom: 1px solid var(--panel-border);
+			box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+			z-index: 1;
+		}
+
+		.title {
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+		}
+
+		.title strong {
+			font-size: 1rem;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+
+		.title span {
+			font-size: 0.86rem;
+			color: var(--muted);
+		}
+
+		.controls {
+			margin-left: auto;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			flex-wrap: wrap;
+		}
+
+		button {
+			border: 1px solid rgba(255, 255, 255, 0.14);
+			background: rgba(255, 255, 255, 0.08);
+			color: var(--text);
+			padding: 9px 14px;
+			border-radius: 999px;
+			font-size: 0.92rem;
+			cursor: pointer;
+			transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+		}
+
+		button:hover {
+			transform: translateY(-1px);
+			background: rgba(255, 255, 255, 0.12);
+			border-color: rgba(255, 255, 255, 0.24);
+		}
+
+		button:active {
+			transform: translateY(0);
+		}
+
+		button:disabled {
+			opacity: 0.46;
+			cursor: default;
+			transform: none;
+		}
+
+		button.delete-btn {
+			background: rgba(255, 106, 97, 0.12);
+			border-color: rgba(255, 106, 97, 0.34);
+		}
+
+		.info {
+			padding: 10px 18px;
+			font-size: 0.92rem;
+			color: var(--muted);
+			background: rgba(4, 7, 13, 0.36);
+			border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		}
+
+		.info strong {
+			color: var(--text);
+		}
+
+		.scene {
+			position: relative;
+			flex: 1;
+			min-height: 0;
+		}
+
+		#fieldCanvas {
+			display: block;
+			width: 100%;
+			height: 100%;
+			cursor: crosshair;
+		}
+
+		.legend {
+			position: absolute;
+			right: 18px;
+			bottom: 18px;
+			padding: 12px 14px;
+			border-radius: 16px;
+			background: rgba(10, 20, 36, 0.72);
+			border: 1px solid rgba(255, 255, 255, 0.08);
+			backdrop-filter: blur(14px);
+			font-size: 0.87rem;
+			color: var(--muted);
+			max-width: min(360px, calc(100vw - 36px));
+		}
+
+		.legend-row {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.legend-row + .legend-row {
+			margin-top: 8px;
+		}
+
+		.swatch {
+			width: 28px;
+			height: 3px;
+			border-radius: 999px;
+		}
+
+		.swatch.red {
+			background: var(--red);
+		}
+
+		.swatch.blue {
+			background: var(--blue);
+		}
+
+		@media (max-width: 860px) {
+			.toolbar {
+				align-items: flex-start;
+				flex-direction: column;
+			}
+
+			.controls {
+				margin-left: 0;
+			}
+
+			.legend {
+				left: 18px;
+				right: auto;
+			}
+		}
+	</style>
+</head>
+<body>
+	<header class="toolbar">
+		<div class="title">
+			<strong>Symulator linii pola wokół przewodnika</strong>
+			<span>Kliknij puste miejsce, aby dodać przewodnik. Dwuklik na okręgu zmienia kierunek prądu.</span>
+		</div>
+		<div class="controls">
+			<button id="deleteBtn" class="delete-btn" disabled>Delete zaznaczony</button>
+			<button id="clearBtn">Wyczyść wszystko</button>
+		</div>
+	</header>
+
+	<div class="info">
+		<strong>Sterowanie:</strong> przeciągnij przewodnik, aby go przesunąć. Kliknięcie zaznacza punkt. Znak <strong>+</strong> oznacza prąd płynący w naszą stronę, a <strong>-</strong> w przeciwną. Klawisz <strong>Delete</strong> usuwa zaznaczony przewodnik.
+	</div>
+
+	<main class="scene">
+		<canvas id="fieldCanvas" aria-label="Symulator linii pola wokół przewodnika"></canvas>
+		<div class="legend">
+			<div class="legend-row"><span class="swatch red"></span><span>linie dla prądu skierowanego do obserwatora</span></div>
+			<div class="legend-row"><span class="swatch blue"></span><span>linie dla prądu skierowanego od obserwatora</span></div>
+		</div>
+	</main>
+
+	<script>
+		const canvas = document.getElementById("fieldCanvas");
+		const ctx = canvas.getContext("2d");
+		const deleteBtn = document.getElementById("deleteBtn");
+		const clearBtn = document.getElementById("clearBtn");
+
+		const colors = {
+			positive: "#ff6a61",
+			negative: "#58a8ff",
+			positiveGlow: "rgba(255, 106, 97, 0.18)",
+			negativeGlow: "rgba(88, 168, 255, 0.2)",
+			selected: "#f5cd68",
+			grid: "rgba(151, 183, 219, 0.12)"
+		};
+
+		const conductorRadius = 18;
+		const hitPadding = 10;
+		const minSeparation = conductorRadius * 1.5;
+		const ringRadii = [56];
+		const seedsPerRing = 1;
+		const traceStep = 5.4;
+		const traceLimit = 10000;
+
+		let conductors = [];
+		let selectedConductorId = null;
+		let draggingConductorId = null;
+		let dragOffsetX = 0;
+		let dragOffsetY = 0;
+		let pointerMoved = false;
+
+		function createConductor(x, y, sign) {
+			return {
+				id: crypto.randomUUID(),
+				x,
+				y,
+				sign
+			};
+		}
+
+		function seedInitialConductors() {
+			const width = canvas.clientWidth || window.innerWidth;
+			const height = canvas.clientHeight || Math.max(500, window.innerHeight - 120);
+			conductors = [
+				createConductor(width * 0.36, height * 0.5, 1),
+				createConductor(width * 0.64, height * 0.5, -1)
+			];
+			selectedConductorId = conductors[0].id;
+		}
+
+		function clamp(value, min, max) {
+			return Math.min(Math.max(value, min), max);
+		}
+
+		function resizeCanvas() {
+			const ratio = window.devicePixelRatio || 1;
+			const width = canvas.clientWidth;
+			const height = canvas.clientHeight;
+
+			canvas.width = Math.max(1, Math.round(width * ratio));
+			canvas.height = Math.max(1, Math.round(height * ratio));
+			ctx.setTransform(1, 0, 0, 1, 0, 0);
+			ctx.scale(ratio, ratio);
+
+			if (!conductors.length) {
+				seedInitialConductors();
+			}
+
+			clampConductors();
+			render();
+		}
+
+		function clampConductors() {
+			for (const conductor of conductors) {
+				conductor.x = clamp(conductor.x, conductorRadius + 4, canvas.clientWidth - conductorRadius - 4);
+				conductor.y = clamp(conductor.y, conductorRadius + 4, canvas.clientHeight - conductorRadius - 4);
+			}
+		}
+
+		function getConductorById(id) {
+			return conductors.find((conductor) => conductor.id === id) || null;
+		}
+
+		function getPointerPosition(event) {
+			const rect = canvas.getBoundingClientRect();
+			return {
+				x: event.clientX - rect.left,
+				y: event.clientY - rect.top
+			};
+		}
+
+		function getConductorAt(x, y) {
+			for (let index = conductors.length - 1; index >= 0; index--) {
+				const conductor = conductors[index];
+				if (Math.hypot(conductor.x - x, conductor.y - y) <= conductorRadius + hitPadding) {
+					return conductor;
+				}
+			}
+			return null;
+		}
+
+		function updateDeleteButton() {
+			deleteBtn.disabled = !selectedConductorId;
+		}
+
+		function drawBackground() {
+			const width = canvas.clientWidth;
+			const height = canvas.clientHeight;
+
+			ctx.clearRect(0, 0, width, height);
+			ctx.fillStyle = "#06101b";
+			ctx.fillRect(0, 0, width, height);
+
+			ctx.save();
+			ctx.strokeStyle = colors.grid;
+			ctx.lineWidth = 1;
+			for (let x = 0; x <= width; x += 36) {
+				ctx.beginPath();
+				ctx.moveTo(x + 0.5, 0);
+				ctx.lineTo(x + 0.5, height);
+				ctx.stroke();
+			}
+			for (let y = 0; y <= height; y += 36) {
+				ctx.beginPath();
+				ctx.moveTo(0, y + 0.5);
+				ctx.lineTo(width, y + 0.5);
+				ctx.stroke();
+			}
+			ctx.restore();
+
+			ctx.save();
+			const glow = ctx.createRadialGradient(width * 0.5, height * 0.46, 30, width * 0.5, height * 0.46, Math.max(width, height) * 0.7);
+			glow.addColorStop(0, "rgba(103, 152, 255, 0.06)");
+			glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+			ctx.fillStyle = glow;
+			ctx.fillRect(0, 0, width, height);
+			ctx.restore();
+		}
+
+		function fieldVectorAt(x, y) {
+			let fx = 0;
+			let fy = 0;
+
+			for (const conductor of conductors) {
+				const dx = x - conductor.x;
+				const dy = y - conductor.y;
+				const distanceSq = dx * dx + dy * dy;
+				const clampedSq = Math.max(distanceSq, 120);
+				const intensity = conductor.sign / clampedSq;
+
+				fx += -dy * intensity;
+				fy += dx * intensity;
+			}
+
+			return { x: fx, y: fy };
+		}
+
+		function shouldStopTrace(x, y) {
+			if (x < -30 || y < -30 || x > canvas.clientWidth + 30 || y > canvas.clientHeight + 30) {
+				return true;
+			}
+
+			for (const conductor of conductors) {
+				if (Math.hypot(x - conductor.x, y - conductor.y) <= conductorRadius * 0.9) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		function traceFieldLine(origin, startAngle, radius) {
+			const points = [];
+			const startX = origin.x + Math.cos(startAngle) * radius;
+			const startY = origin.y + Math.sin(startAngle) * radius;
+			let x = startX;
+			let y = startY;
+			points.push({ x, y });
+
+			for (let step = 0; step < traceLimit; step++) {
+				const field = fieldVectorAt(x, y);
+				const magnitude = Math.hypot(field.x, field.y);
+				if (magnitude < 1e-6) {
+					break;
+				}
+
+				x += (field.x / magnitude) * traceStep;
+				y += (field.y / magnitude) * traceStep;
+				points.push({ x, y });
+
+				if (shouldStopTrace(x, y)) {
+					break;
+				}
+
+				if (step > 32 && Math.hypot(x - startX, y - startY) < traceStep * 1.3) {
+					break;
+				}
+			}
+
+			return points;
+		}
+
+		function drawFieldLines() {
+			ctx.save();
+			ctx.lineWidth = 1.45;
+			ctx.lineCap = "round";
+			ctx.lineJoin = "round";
+
+			for (const conductor of conductors) {
+				ctx.strokeStyle = conductor.sign > 0 ? colors.positive : colors.negative;
+				ctx.shadowBlur = 9;
+				ctx.shadowColor = conductor.sign > 0 ? colors.positiveGlow : colors.negativeGlow;
+
+				for (const radius of ringRadii) {
+					for (let index = 0; index < seedsPerRing; index++) {
+						const angle = (Math.PI * 2 * index) / seedsPerRing;
+						const points = traceFieldLine(conductor, angle, radius);
+
+						if (points.length < 2) {
+							continue;
+						}
+
+						ctx.beginPath();
+						ctx.moveTo(points[0].x, points[0].y);
+						for (let pointIndex = 1; pointIndex < points.length; pointIndex++) {
+							ctx.lineTo(points[pointIndex].x, points[pointIndex].y);
+						}
+						ctx.stroke();
+					}
+				}
+			}
+
+			ctx.restore();
+		}
+
+		function drawConductor(conductor) {
+			ctx.save();
+			ctx.beginPath();
+			ctx.arc(conductor.x, conductor.y, conductorRadius + 10, 0, Math.PI * 2);
+			ctx.fillStyle = conductor.sign > 0 ? colors.positiveGlow : colors.negativeGlow;
+			ctx.fill();
+
+			ctx.beginPath();
+			ctx.arc(conductor.x, conductor.y, conductorRadius, 0, Math.PI * 2);
+			ctx.fillStyle = conductor.sign > 0 ? colors.positive : colors.negative;
+			ctx.fill();
+
+			ctx.lineWidth = selectedConductorId === conductor.id ? 3 : 1.5;
+			ctx.strokeStyle = selectedConductorId === conductor.id ? colors.selected : "rgba(255, 255, 255, 0.88)";
+			ctx.stroke();
+
+			ctx.strokeStyle = "#ffffff";
+			ctx.lineWidth = 3;
+			ctx.lineCap = "round";
+			ctx.beginPath();
+			ctx.moveTo(conductor.x - 7, conductor.y);
+			ctx.lineTo(conductor.x + 7, conductor.y);
+			ctx.stroke();
+
+			if (conductor.sign > 0) {
+				ctx.beginPath();
+				ctx.moveTo(conductor.x, conductor.y - 7);
+				ctx.lineTo(conductor.x, conductor.y + 7);
+				ctx.stroke();
+			}
+
+			ctx.restore();
+		}
+
+		function render() {
+			drawBackground();
+			drawFieldLines();
+			for (const conductor of conductors) {
+				drawConductor(conductor);
+			}
+			updateDeleteButton();
+		}
+
+		function addConductor(x, y) {
+			for (const conductor of conductors) {
+				if (Math.hypot(conductor.x - x, conductor.y - y) < minSeparation) {
+					return;
+				}
+			}
+
+			const conductor = createConductor(x, y, 1);
+			conductors.push(conductor);
+			selectedConductorId = conductor.id;
+			render();
+		}
+
+		function deleteSelectedConductor() {
+			if (!selectedConductorId) {
+				return;
+			}
+
+			conductors = conductors.filter((conductor) => conductor.id !== selectedConductorId);
+			selectedConductorId = conductors.at(-1)?.id || null;
+			render();
+		}
+
+		function onPointerDown(event) {
+			const pointer = getPointerPosition(event);
+			const hitConductor = getConductorAt(pointer.x, pointer.y);
+
+			pointerMoved = false;
+			if (!hitConductor) {
+				selectedConductorId = null;
+				render();
+				return;
+			}
+
+			selectedConductorId = hitConductor.id;
+			draggingConductorId = hitConductor.id;
+			dragOffsetX = pointer.x - hitConductor.x;
+			dragOffsetY = pointer.y - hitConductor.y;
+			canvas.setPointerCapture(event.pointerId);
+			render();
+		}
+
+		function onPointerMove(event) {
+			if (!draggingConductorId) {
+				return;
+			}
+
+			const conductor = getConductorById(draggingConductorId);
+			if (!conductor) {
+				return;
+			}
+
+			const pointer = getPointerPosition(event);
+			const nextX = clamp(pointer.x - dragOffsetX, conductorRadius + 4, canvas.clientWidth - conductorRadius - 4);
+			const nextY = clamp(pointer.y - dragOffsetY, conductorRadius + 4, canvas.clientHeight - conductorRadius - 4);
+
+			if (Math.abs(nextX - conductor.x) > 0.4 || Math.abs(nextY - conductor.y) > 0.4) {
+				pointerMoved = true;
+			}
+
+			conductor.x = nextX;
+			conductor.y = nextY;
+			render();
+		}
+
+		function stopDragging(event) {
+			if (draggingConductorId && event) {
+				canvas.releasePointerCapture(event.pointerId);
+			}
+			draggingConductorId = null;
+		}
+
+		function onClick(event) {
+			if (pointerMoved) {
+				pointerMoved = false;
+				return;
+			}
+
+			const pointer = getPointerPosition(event);
+			const hitConductor = getConductorAt(pointer.x, pointer.y);
+			if (hitConductor) {
+				selectedConductorId = hitConductor.id;
+				render();
+				return;
+			}
+
+			addConductor(pointer.x, pointer.y);
+		}
+
+		function onDoubleClick(event) {
+			const pointer = getPointerPosition(event);
+			const hitConductor = getConductorAt(pointer.x, pointer.y);
+			if (!hitConductor) {
+				return;
+			}
+
+			hitConductor.sign *= -1;
+			selectedConductorId = hitConductor.id;
+			render();
+		}
+
+		canvas.addEventListener("pointerdown", onPointerDown);
+		canvas.addEventListener("pointermove", onPointerMove);
+		canvas.addEventListener("pointerup", stopDragging);
+		canvas.addEventListener("pointercancel", stopDragging);
+		canvas.addEventListener("click", onClick);
+		canvas.addEventListener("dblclick", onDoubleClick);
+
+		deleteBtn.addEventListener("click", deleteSelectedConductor);
+		clearBtn.addEventListener("click", () => {
+			conductors = [];
+			selectedConductorId = null;
+			seedInitialConductors();
+			render();
+		});
+
+		window.addEventListener("keydown", (event) => {
+			if (event.key === "Delete") {
+				deleteSelectedConductor();
+			}
+		});
+
+		window.addEventListener("resize", resizeCanvas);
+		resizeCanvas();
+	</script>
+</body>
+</html>
