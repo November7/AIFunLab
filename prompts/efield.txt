@@ -3,3 +3,4 @@ Wersja 1 [PL]
 1. przygotuj aplikację svg/canvas js css html w jendym pliku będąca symulatorem linii pola elektrycznego wokół przewodnika. przewodnik widziany w postaci okręgu (przekrój poprzecznt) + prąd płynie w naszą stronę - w przeciwną. linie poola czerwone i niebiekie w zależności od kierunku
 2. ręczna modyfikacja ustawień linii pola.
 3. popraw działanie na urządzeniach mobilnych (przesuwanie obecnie nie działa prawidłowo)
+4. popraw działanie podwójnego kliknięcia (dotyku) na urządzeniach mobilnych - obecnie nie działa możliwosć zmiany "kierunku" prądu
