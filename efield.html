@@ -622,6 +622,22 @@
 
 		window.addEventListener("resize", resizeCanvas);
 		resizeCanvas();
+	
+
+	function onTouchStart(event) {
+            if (event.touches && event.touches.length === 1) {
+                const touch = event.touches[0];
+                const simulatedEvent = new MouseEvent("dblclick", {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                event.target.dispatchEvent(simulatedEvent);
+            }
+        }
+
+        canvas.addEventListener("touchstart", onTouchStart);
 	</script>
 </body>
 </html>
