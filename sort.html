@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>AIFunLab - Symulator sortowania</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			--outer-gap: clamp(10px, 2.2vh, 18px);
+			--bg-1: #f6efe2;
+			--bg-2: #c8ecdf;
+			--panel: rgba(255, 255, 255, 0.74);
+			--panel-border: rgba(24, 56, 48, 0.14);
+			--text: #102319;
+			--muted: #385449;
+			--brand: #0f8f6f;
+			--brand-strong: #0b6f56;
+			--accent: #f18f01;
+			--bar: #1a8f8c;
+			--bar-active: #f35b04;
+			--bar-sorted: #5ab552;
+			--danger: #b42318;
+			--shadow: 0 14px 38px rgba(8, 33, 26, 0.18);
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			height: 100%;
+		}
+
+		body {
+			margin: 0;
+			height: 100dvh;
+			font-family: "Space Grotesk", "Segoe UI", sans-serif;
+			color: var(--text);
+			background:
+				radial-gradient(circle at 12% 12%, rgba(241, 143, 1, 0.28), transparent 38%),
+				radial-gradient(circle at 90% 78%, rgba(15, 143, 111, 0.34), transparent 42%),
+				linear-gradient(150deg, var(--bg-1), var(--bg-2));
+			padding: var(--outer-gap) clamp(12px, 2.8vw, 30px);
+			overflow: hidden;
+		}
+
+		.shell {
+			width: min(1200px, 100%);
+			margin: 0 auto;
+			height: 100%;
+			display: grid;
+			grid-template-rows: auto auto auto minmax(0, 1fr);
+			gap: 16px;
+		}
+
+		.topbar {
+			position: sticky;
+			top: 12px;
+			z-index: 20;
+			display: grid;
+			gap: 12px;
+			border: 1px solid var(--panel-border);
+			background: var(--panel);
+			box-shadow: var(--shadow);
+			backdrop-filter: blur(10px);
+			border-radius: 18px;
+			padding: 14px;
+		}
+
+		.title-row {
+			display: flex;
+			align-items: baseline;
+			justify-content: space-between;
+			gap: 10px;
+			flex-wrap: wrap;
+		}
+
+		h1 {
+			margin: 0;
+			font-size: clamp(1.1rem, 2.6vw, 1.9rem);
+			letter-spacing: 0.02em;
+		}
+
+		.small-note {
+			margin: 0;
+			color: var(--muted);
+			font-size: 0.92rem;
+		}
+
+		.controls {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+			gap: 10px;
+			align-items: end;
+		}
+
+		.control {
+			display: grid;
+			gap: 6px;
+		}
+
+		.control label {
+			font-size: 0.78rem;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			color: var(--muted);
+		}
+
+		select,
+		input[type="range"],
+		button {
+			width: 100%;
+			border-radius: 12px;
+			border: 1px solid rgba(13, 57, 43, 0.2);
+			font-family: inherit;
+			font-size: 0.95rem;
+		}
+
+		select,
+		input[type="range"] {
+			background: rgba(255, 255, 255, 0.86);
+			min-height: 42px;
+			padding: 0 12px;
+			color: var(--text);
+		}
+
+		button {
+			min-height: 42px;
+			cursor: pointer;
+			font-weight: 700;
+			letter-spacing: 0.03em;
+			transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+			color: #fff;
+			border: none;
+		}
+
+		button:hover {
+			transform: translateY(-1px);
+		}
+
+		button:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			transform: none;
+		}
+
+		.btn-random {
+			background: linear-gradient(125deg, #0f8f6f, #13a57f);
+			box-shadow: 0 8px 16px rgba(15, 143, 111, 0.32);
+		}
+
+		.btn-start {
+			background: linear-gradient(125deg, #e26d00, #f18f01);
+			box-shadow: 0 8px 16px rgba(241, 143, 1, 0.32);
+		}
+
+		.btn-stop {
+			background: linear-gradient(125deg, #932f24, #b42318);
+			box-shadow: 0 8px 16px rgba(180, 35, 24, 0.3);
+		}
+
+		.dashboard {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: 10px;
+		}
+
+		.stat {
+			border: 1px solid var(--panel-border);
+			border-radius: 14px;
+			padding: 10px 12px;
+			background: rgba(255, 255, 255, 0.62);
+			display: grid;
+			gap: 4px;
+			box-shadow: inset 0 1px rgba(255, 255, 255, 0.4);
+		}
+
+		.stat .label {
+			font-size: 0.76rem;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			color: var(--muted);
+		}
+
+		.stat .value {
+			font-family: "JetBrains Mono", monospace;
+			font-size: 1rem;
+			font-weight: 600;
+		}
+
+		.canvas-wrap {
+			position: relative;
+			min-height: 0;
+			height: 100%;
+			border: 1px solid var(--panel-border);
+			border-radius: 18px;
+			background:
+				linear-gradient(to top, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.66));
+			overflow: hidden;
+			box-shadow: var(--shadow);
+		}
+
+		canvas {
+			display: block;
+			width: 100%;
+			height: 100%;
+		}
+
+		.algo-note {
+			margin: 0;
+			padding: 11px 14px;
+			border-radius: 12px;
+			border: 1px dashed rgba(18, 50, 41, 0.35);
+			color: var(--muted);
+			background: rgba(255, 255, 255, 0.63);
+			font-size: 0.93rem;
+		}
+
+		@media (max-width: 740px) {
+			body {
+				padding: 10px;
+			}
+
+			.topbar {
+				top: 8px;
+			}
+
+			.shell {
+				gap: 10px;
+			}
+		}
+	</style>
+</head>
+<body>
+	<main class="shell">
+		<section class="topbar">
+			<div class="title-row">
+				<h1>Symulator algorytmow sortowania</h1>
+				<p class="small-note" id="statusText">Stan: gotowy</p>
+			</div>
+
+			<div class="controls">
+				<div class="control">
+					<label for="algorithm">Algorytm</label>
+					<select id="algorithm">
+						<option value="bubble">Babelkowe</option>
+						<option value="crazy">Zwariowane (Gnome)</option>
+						<option value="selection">Przez wybor</option>
+						<option value="insertion">Przez wstawianie</option>
+						<option value="shell">Shella</option>
+						<option value="quick">Szybkie</option>
+						<option value="cocktail">Koktajlowe</option>
+						<option value="comb">Grzebieniowe (Comb)</option>
+						<option value="heap">Kopcowe (Heap)</option>
+						<option value="merge">Scalanie (Merge)</option>
+					</select>
+				</div>
+
+				<div class="control">
+					<label for="size">Liczba kolumn: <span id="sizeLabel">60</span></label>
+					<input type="range" id="size" min="12" max="160" step="1" value="60">
+				</div>
+
+				<div class="control">
+					<label for="speed">Predkosc: <span id="speedLabel">140</span></label>
+					<input type="range" id="speed" min="1" max="200" step="1" value="140">
+				</div>
+
+				<div class="control">
+					<label>&nbsp;</label>
+					<button id="randomBtn" class="btn-random" type="button">Losowanie danych</button>
+				</div>
+
+				<div class="control">
+					<label>&nbsp;</label>
+					<button id="startBtn" class="btn-start" type="button">Start</button>
+				</div>
+
+				<div class="control">
+					<label>&nbsp;</label>
+					<button id="stopBtn" class="btn-stop" type="button" disabled>Stop</button>
+				</div>
+			</div>
+		</section>
+
+		<section class="dashboard">
+			<article class="stat">
+				<span class="label">Porownania</span>
+				<span class="value" id="cmpCount">0</span>
+			</article>
+			<article class="stat">
+				<span class="label">Zamiany</span>
+				<span class="value" id="swapCount">0</span>
+			</article>
+			<article class="stat">
+				<span class="label">Zapisy</span>
+				<span class="value" id="writeCount">0</span>
+			</article>
+			<article class="stat">
+				<span class="label">Liczba danych</span>
+				<span class="value" id="lengthCount">60</span>
+			</article>
+		</section>
+
+		<p class="algo-note" id="algoNote"></p>
+
+		<section class="canvas-wrap">
+			<canvas id="board"></canvas>
+		</section>
+	</main>
+
+	<script>
+		const algorithmSelect = document.getElementById("algorithm");
+		const sizeInput = document.getElementById("size");
+		const speedInput = document.getElementById("speed");
+		const randomBtn = document.getElementById("randomBtn");
+		const startBtn = document.getElementById("startBtn");
+		const stopBtn = document.getElementById("stopBtn");
+		const statusText = document.getElementById("statusText");
+		const cmpCount = document.getElementById("cmpCount");
+		const swapCount = document.getElementById("swapCount");
+		const writeCount = document.getElementById("writeCount");
+		const lengthCount = document.getElementById("lengthCount");
+		const sizeLabel = document.getElementById("sizeLabel");
+		const speedLabel = document.getElementById("speedLabel");
+		const algoNote = document.getElementById("algoNote");
+
+		const canvas = document.getElementById("board");
+		const ctx = canvas.getContext("2d");
+
+		const ALGO_INFO = {
+			bubble: "Babelkowe: porownuje sasiednie elementy i zamienia je, gdy sa w zlej kolejnosci. Czas: O(n^2).",
+			crazy: "Zwariowane (Gnome): idzie do przodu i wraca, gdy znajdzie zla kolejnosc. Czas srednio O(n^2).",
+			selection: "Przez wybor: dla kazdej pozycji szuka minimum i podmienia je na przod. Czas: O(n^2).",
+			insertion: "Przez wstawianie: buduje posortowany prefiks przez przesuwanie elementow. Czas: O(n^2), dla prawie posortowanych danych blizej O(n).",
+			shell: "Shella: sortowanie przez wstawianie wykonywane na malejacych odstepach. Typowo szybsze od O(n^2).",
+			quick: "Szybkie: dziel i zwyciezaj, partycjonowanie wzgledem pivota. Srednio O(n log n), najgorzej O(n^2).",
+			cocktail: "Koktajlowe: babelkowe w obie strony, szybciej przesuwa skrajnosci. Czas: O(n^2).",
+			comb: "Grzebieniowe (Comb): porownuje elementy oddalone o malejacy gap. Srednio szybsze od babelkowego.",
+			heap: "Kopcowe (Heap): buduje kopiec i wielokrotnie wybiera maksimum. Czas: O(n log n).",
+			merge: "Scalanie (Merge): rekurencyjnie dzieli i scala podtablice. Czas: O(n log n), stabilne."
+		};
+
+		const state = {
+			data: [],
+			active: new Set(),
+			sorted: new Set(),
+			comparisons: 0,
+			swaps: 0,
+			writes: 0,
+			running: false,
+			stopRequested: false
+		};
+
+		const rafDraw = () => {
+			window.requestAnimationFrame(draw);
+		};
+
+		function updateInfo() {
+			cmpCount.textContent = String(state.comparisons);
+			swapCount.textContent = String(state.swaps);
+			writeCount.textContent = String(state.writes);
+			lengthCount.textContent = String(state.data.length);
+			sizeLabel.textContent = sizeInput.value;
+			speedLabel.textContent = speedInput.value;
+			algoNote.textContent = ALGO_INFO[algorithmSelect.value];
+		}
+
+		function setStatus(text) {
+			statusText.textContent = "Stan: " + text;
+		}
+
+		function resizeCanvas() {
+			const dpr = window.devicePixelRatio || 1;
+			const rect = canvas.getBoundingClientRect();
+			const width = Math.max(220, Math.floor(rect.width));
+			const height = Math.max(220, Math.floor(rect.height));
+			canvas.width = Math.floor(width * dpr);
+			canvas.height = Math.floor(height * dpr);
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+			rafDraw();
+		}
+
+		function generateData(length) {
+			state.data = Array.from({ length }, () => 10 + Math.floor(Math.random() * 90));
+			state.active.clear();
+			state.sorted.clear();
+			state.comparisons = 0;
+			state.swaps = 0;
+			state.writes = 0;
+			updateInfo();
+			rafDraw();
+		}
+
+		function getDelay() {
+			const speed = Number(speedInput.value);
+			return Math.max(2, 225 - speed);
+		}
+
+		function draw() {
+			const width = canvas.clientWidth;
+			const height = canvas.clientHeight;
+
+			ctx.clearRect(0, 0, width, height);
+
+			ctx.fillStyle = "rgba(255,255,255,0.33)";
+			const bands = 10;
+			for (let i = 0; i < bands; i += 1) {
+				const y = (height / bands) * i;
+				ctx.fillRect(0, y, width, 1);
+			}
+
+			const n = state.data.length;
+			if (!n) {
+				return;
+			}
+
+			const maxVal = Math.max(...state.data, 1);
+			const slot = width / n;
+			const barWidth = Math.max(1, slot - 1);
+			const radius = Math.min(5, Math.max(1, barWidth * 0.28));
+			const padTop = 20;
+			const padBottom = 6;
+			const drawLabels = n <= 44;
+
+			function roundedBar(x, y, w, h, r) {
+				const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+				ctx.beginPath();
+				ctx.moveTo(x, y + h);
+				ctx.lineTo(x, y + rr);
+				ctx.quadraticCurveTo(x, y, x + rr, y);
+				ctx.lineTo(x + w - rr, y);
+				ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+				ctx.lineTo(x + w, y + h);
+				ctx.closePath();
+				ctx.fill();
+			}
+
+			for (let i = 0; i < n; i += 1) {
+				const value = state.data[i];
+				const h = ((height - padTop - padBottom) * value) / maxVal;
+				const x = i * slot;
+				const y = height - h - padBottom;
+
+				let fill = "#1a8f8c";
+				if (state.sorted.has(i)) {
+					fill = "#5ab552";
+				}
+				if (state.active.has(i)) {
+					fill = "#f35b04";
+				}
+
+				ctx.fillStyle = fill;
+				roundedBar(x, y, barWidth, h, radius);
+
+				if (drawLabels) {
+					ctx.fillStyle = "rgba(12, 36, 29, 0.85)";
+					ctx.font = "10px JetBrains Mono";
+					ctx.textAlign = "center";
+					ctx.fillText(String(value), x + barWidth / 2, y - 4);
+				}
+			}
+		}
+
+		function wait(ms) {
+			return new Promise((resolve) => {
+				window.setTimeout(resolve, ms);
+			});
+		}
+
+		function checkStop() {
+			if (state.stopRequested) {
+				throw new Error("STOP_REQUESTED");
+			}
+		}
+
+		async function markActive(indices) {
+			state.active = new Set(indices);
+			updateInfo();
+			rafDraw();
+			await wait(getDelay());
+			checkStop();
+		}
+
+		async function compare(i, j) {
+			state.comparisons += 1;
+			await markActive([i, j]);
+			return state.data[i] - state.data[j];
+		}
+
+		async function swap(i, j) {
+			state.swaps += 1;
+			const tmp = state.data[i];
+			state.data[i] = state.data[j];
+			state.data[j] = tmp;
+			await markActive([i, j]);
+		}
+
+		async function write(index, value, activePeer = -1) {
+			state.writes += 1;
+			state.data[index] = value;
+			if (activePeer >= 0) {
+				await markActive([index, activePeer]);
+			} else {
+				await markActive([index]);
+			}
+		}
+
+		function setSortedRange(from, to) {
+			for (let i = from; i <= to; i += 1) {
+				if (i >= 0 && i < state.data.length) {
+					state.sorted.add(i);
+				}
+			}
+			rafDraw();
+		}
+
+		async function bubbleSort() {
+			const n = state.data.length;
+			for (let end = n - 1; end > 0; end -= 1) {
+				let swappedInPass = false;
+				for (let i = 0; i < end; i += 1) {
+					if ((await compare(i, i + 1)) > 0) {
+						await swap(i, i + 1);
+						swappedInPass = true;
+					}
+				}
+				state.sorted.add(end);
+				rafDraw();
+				if (!swappedInPass) {
+					break;
+				}
+			}
+			setSortedRange(0, n - 1);
+		}
+
+		async function crazyGnomeSort() {
+			let i = 1;
+			const n = state.data.length;
+			while (i < n) {
+				if (i === 0) {
+					i = 1;
+					continue;
+				}
+
+				if ((await compare(i - 1, i)) <= 0) {
+					i += 1;
+				} else {
+					await swap(i - 1, i);
+					i -= 1;
+				}
+			}
+			setSortedRange(0, n - 1);
+		}
+
+		async function selectionSort() {
+			const n = state.data.length;
+			for (let i = 0; i < n - 1; i += 1) {
+				let minIdx = i;
+				for (let j = i + 1; j < n; j += 1) {
+					if ((await compare(j, minIdx)) < 0) {
+						minIdx = j;
+					}
+				}
+				if (minIdx !== i) {
+					await swap(i, minIdx);
+				}
+				state.sorted.add(i);
+				rafDraw();
+			}
+			setSortedRange(0, n - 1);
+		}
+
+		async function insertionSort() {
+			const n = state.data.length;
+			for (let i = 1; i < n; i += 1) {
+				const key = state.data[i];
+				let j = i - 1;
+				await markActive([i]);
+
+				while (j >= 0) {
+					state.comparisons += 1;
+					await markActive([j, j + 1]);
+					if (state.data[j] <= key) {
+						break;
+					}
+					await write(j + 1, state.data[j], j);
+					j -= 1;
+				}
+				await write(j + 1, key);
+				setSortedRange(0, i);
+			}
+			setSortedRange(0, n - 1);
+		}
+
+		async function shellSort() {
+			const n = state.data.length;
+			for (let gap = Math.floor(n / 2); gap > 0; gap = Math.floor(gap / 2)) {
+				for (let i = gap; i < n; i += 1) {
+					const temp = state.data[i];
+					let j = i;
+					await markActive([i]);
+
+					while (j >= gap) {
+						state.comparisons += 1;
+						await markActive([j - gap, j]);
+						if (state.data[j - gap] <= temp) {
+							break;
+						}
+						await write(j, state.data[j - gap], j - gap);
+						j -= gap;
+					}
+					await write(j, temp);
+				}
+			}
+			setSortedRange(0, n - 1);
+		}
+
+		async function quickSort() {
+			async function partition(low, high) {
+				const pivot = state.data[high];
+				let i = low - 1;
+
+				for (let j = low; j < high; j += 1) {
+					state.comparisons += 1;
+					await markActive([j, high]);
+					if (state.data[j] < pivot) {
+						i += 1;
+						if (i !== j) {
+							await swap(i, j);
+						}
+					}
+				}
+				await swap(i + 1, high);
+				return i + 1;
+			}
+
+			async function rec(low, high) {
+				if (low >= high) {
+					if (low === high) {
+						state.sorted.add(low);
+						rafDraw();
+					}
+					return;
+				}
+				const p = await partition(low, high);
+				state.sorted.add(p);
+				rafDraw();
+				await rec(low, p - 1);
+				await rec(p + 1, high);
+			}
+
+			await rec(0, state.data.length - 1);
+			setSortedRange(0, state.data.length - 1);
+		}
+
+		async function cocktailSort() {
+			const n = state.data.length;
+			let start = 0;
+			let end = n - 1;
+			let swapped = true;
+
+			while (swapped) {
+				swapped = false;
+				for (let i = start; i < end; i += 1) {
+					if ((await compare(i, i + 1)) > 0) {
+						await swap(i, i + 1);
+						swapped = true;
+					}
+				}
+				state.sorted.add(end);
+				rafDraw();
+				if (!swapped) {
+					break;
+				}
+				end -= 1;
+
+				swapped = false;
+				for (let i = end; i > start; i -= 1) {
+					if ((await compare(i - 1, i)) > 0) {
+						await swap(i - 1, i);
+						swapped = true;
+					}
+				}
+				state.sorted.add(start);
+				rafDraw();
+				start += 1;
+			}
+			setSortedRange(0, n - 1);
+		}
+
+		async function combSort() {
+			const n = state.data.length;
+			let gap = n;
+			let swapped = true;
+
+			while (gap > 1 || swapped) {
+				gap = Math.max(1, Math.floor(gap / 1.3));
+				swapped = false;
+
+				for (let i = 0; i + gap < n; i += 1) {
+					if ((await compare(i, i + gap)) > 0) {
+						await swap(i, i + gap);
+						swapped = true;
+					}
+				}
+			}
+			setSortedRange(0, n - 1);
+		}
+
+		async function heapSort() {
+			const n = state.data.length;
+
+			async function heapify(size, root) {
+				let largest = root;
+				const left = 2 * root + 1;
+				const right = 2 * root + 2;
+
+				if (left < size && (await compare(left, largest)) > 0) {
+					largest = left;
+				}
+				if (right < size && (await compare(right, largest)) > 0) {
+					largest = right;
+				}
+
+				if (largest !== root) {
+					await swap(root, largest);
+					await heapify(size, largest);
+				}
+			}
+
+			for (let i = Math.floor(n / 2) - 1; i >= 0; i -= 1) {
+				await heapify(n, i);
+			}
+
+			for (let end = n - 1; end > 0; end -= 1) {
+				await swap(0, end);
+				state.sorted.add(end);
+				rafDraw();
+				await heapify(end, 0);
+			}
+
+			setSortedRange(0, n - 1);
+		}
+
+		async function mergeSort() {
+			const temp = new Array(state.data.length);
+
+			async function merge(left, mid, right) {
+				let i = left;
+				let j = mid + 1;
+				let k = left;
+
+				while (i <= mid && j <= right) {
+					state.comparisons += 1;
+					await markActive([i, j]);
+					if (state.data[i] <= state.data[j]) {
+						temp[k] = state.data[i];
+						i += 1;
+					} else {
+						temp[k] = state.data[j];
+						j += 1;
+					}
+					k += 1;
+				}
+
+				while (i <= mid) {
+					temp[k] = state.data[i];
+					i += 1;
+					k += 1;
+				}
+
+				while (j <= right) {
+					temp[k] = state.data[j];
+					j += 1;
+					k += 1;
+				}
+
+				for (let p = left; p <= right; p += 1) {
+					await write(p, temp[p]);
+				}
+			}
+
+			async function rec(left, right) {
+				if (left >= right) {
+					if (left === right) {
+						state.sorted.add(left);
+						rafDraw();
+					}
+					return;
+				}
+				const mid = Math.floor((left + right) / 2);
+				await rec(left, mid);
+				await rec(mid + 1, right);
+				await merge(left, mid, right);
+			}
+
+			await rec(0, state.data.length - 1);
+			setSortedRange(0, state.data.length - 1);
+		}
+
+		const SORTERS = {
+			bubble: bubbleSort,
+			crazy: crazyGnomeSort,
+			selection: selectionSort,
+			insertion: insertionSort,
+			shell: shellSort,
+			quick: quickSort,
+			cocktail: cocktailSort,
+			comb: combSort,
+			heap: heapSort,
+			merge: mergeSort
+		};
+
+		async function runSelectedSort() {
+			if (state.running) {
+				return;
+			}
+
+			state.running = true;
+			state.stopRequested = false;
+			state.sorted.clear();
+			state.active.clear();
+			state.comparisons = 0;
+			state.swaps = 0;
+			state.writes = 0;
+			updateInfo();
+
+			startBtn.disabled = true;
+			randomBtn.disabled = true;
+			stopBtn.disabled = false;
+			sizeInput.disabled = true;
+			algorithmSelect.disabled = true;
+
+			const label = algorithmSelect.options[algorithmSelect.selectedIndex].textContent;
+			setStatus("sortowanie: " + label.toLowerCase());
+
+			try {
+				const sorter = SORTERS[algorithmSelect.value];
+				await sorter();
+				state.active.clear();
+				setSortedRange(0, state.data.length - 1);
+				setStatus("zakonczono");
+			} catch (err) {
+				state.active.clear();
+				if (err && err.message === "STOP_REQUESTED") {
+					setStatus("zatrzymano");
+				} else {
+					setStatus("blad");
+					console.error(err);
+				}
+			} finally {
+				state.running = false;
+				state.stopRequested = false;
+				startBtn.disabled = false;
+				randomBtn.disabled = false;
+				stopBtn.disabled = true;
+				sizeInput.disabled = false;
+				algorithmSelect.disabled = false;
+				updateInfo();
+				rafDraw();
+			}
+		}
+
+		randomBtn.addEventListener("click", () => {
+			if (state.running) {
+				return;
+			}
+			generateData(Number(sizeInput.value));
+			setStatus("wylosowano nowy zestaw");
+		});
+
+		startBtn.addEventListener("click", () => {
+			runSelectedSort();
+		});
+
+		stopBtn.addEventListener("click", () => {
+			if (!state.running) {
+				return;
+			}
+			state.stopRequested = true;
+			setStatus("zatrzymywanie...");
+		});
+
+		sizeInput.addEventListener("input", () => {
+			updateInfo();
+			if (!state.running) {
+				generateData(Number(sizeInput.value));
+			}
+		});
+
+		speedInput.addEventListener("input", () => {
+			updateInfo();
+		});
+
+		algorithmSelect.addEventListener("change", () => {
+			updateInfo();
+		});
+
+		window.addEventListener("resize", resizeCanvas);
+
+		generateData(Number(sizeInput.value));
+		updateInfo();
+		resizeCanvas();
+		setStatus("gotowy");
+	</script>
+</body>
+</html>

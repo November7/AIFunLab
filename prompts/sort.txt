@@ -1,0 +1,4 @@
+Wersja 1 [PL]
+
+1. stwórz symulator algorytmów sortowania: html, js, css, svg/canvas. u góry menu - losowanie danych, start, wybór algorytmów sortowania (np lista rozwijana). symulator reprezentuje dane w postaci kolumn, podczas sortowania no wyróżniony kolor zaznaczane są te wartości które aktualnie są zmieniane (zamieniane). Sortowania: bąbelkowe, zwariowane, przez wybór, przez wstawianie, shella, szybkie itp
+2. usuń legendę, dodaj jeszcze kilka algorytmów sortowania, słupki danych mogą byćlekko zaokrąglone
