@@ -1,0 +1,3 @@
+Wersja 1 [PL]
+
+1. Stwórz aplikację (jeden plik: html/css/js (canvas/svg) w któej użytkownik ma planszę np. 10x10 (rozmiar ma być wybierany w menu). Plansza składa się z kwadratów o losowych kolorach czewony / niebieski. Celem jest ustawienie całej planszy na czerwono. kliknięcie (dotknięcie) pola powoduje zmianę koloru na przeciwny łącznie z bezpośrednimi sąsiadami (góra/dół/prawo/lewo). Start aplikacji uruchamia czasomierz, ustawienie całej planszy na czerwono zatrzymuje. Dodatkowo program liczy ilość przyciśniętych (dotkniętych) pól. Przyciski start/reset/wybór rozmiaru planszy. Dodaj obsługę dla urządzeń mobilnych

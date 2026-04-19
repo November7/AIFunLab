@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flip - Gra Logiczna</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+
+        .control-group select {
+            padding: 8px 12px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 0.9em;
+            cursor: pointer;
+            background: white;
+            color: #333;
+            transition: all 0.3s;
+        }
+
+        .control-group select:hover {
+            border-color: #764ba2;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-start {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-start:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-reset {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.3);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .game-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .message {
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-top: 10px;
+            min-height: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .controls {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .game-area {
+                min-height: 300px;
+                padding: 10px;
+            }
+
+            button {
+                padding: 8px 15px;
+                font-size: 0.85em;
+            }
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 FLIP</h1>
+            <p>Zmień całą planszę na czerwony kolor</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="boardSize">Rozmiar:</label>
+                <select id="boardSize">
+                    <option value="5">5×5</option>
+                    <option value="8">8×8</option>
+                    <option value="10" selected>10×10</option>
+                    <option value="12">12×12</option>
+                    <option value="15">15×15</option>
+                </select>
+            </div>
+            <button class="btn-start" id="startBtn">▶ Start</button>
+            <button class="btn-reset" id="resetBtn">↻ Reset</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Czas</div>
+                <div class="stat-value" id="timer">0:00</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Kliknięcia</div>
+                <div class="stat-value" id="clicks">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Progres</div>
+                <div class="stat-value" id="progress">0%</div>
+            </div>
+        </div>
+
+        <div class="game-area">
+            <div style="width: 100%;">
+                <canvas id="gameCanvas"></canvas>
+                <div class="message" id="message"></div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            💡 Kliknij pole, aby zmienić jego kolor i kolorów sąsiadujących pól (góra, dół, lewo, prawo). Celem jest uczynić wszystkie pola czerwone!
+        </div>
+    </div>
+
+    <script>
+        class FlipGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.boardSize = 10;
+                this.board = [];
+                this.clicks = 0;
+                this.gameStarted = false;
+                this.gameWon = false;
+                this.startTime = null;
+                this.timerInterval = null;
+                this.cellSize = 50;
+
+                this.setupEventListeners();
+                this.initializeBoard();
+                this.draw();
+                this.updateProgress();
+            }
+
+            setupEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('boardSize').addEventListener('change', (e) => {
+                    this.boardSize = parseInt(e.target.value);
+                    this.reset();
+                });
+
+                this.canvas.addEventListener('click', (e) => this.handleClick(e));
+                this.canvas.addEventListener('touchend', (e) => this.handleTouch(e));
+                window.addEventListener('resize', () => this.draw());
+            }
+
+            initializeBoard() {
+                this.board = [];
+                for (let i = 0; i < this.boardSize; i++) {
+                    this.board[i] = [];
+                    for (let j = 0; j < this.boardSize; j++) {
+                        this.board[i][j] = Math.random() > 0.5 ? 'red' : 'blue';
+                    }
+                }
+                this.clicks = 0;
+                this.gameStarted = false;
+                this.gameWon = false;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('startBtn').textContent = '▶ Start';
+                document.getElementById('message').textContent = '';
+                document.getElementById('clicks').textContent = '0';
+                document.getElementById('timer').textContent = '0:00';
+                this.updateProgress();
+            }
+
+            start() {
+                if (this.gameStarted || this.gameWon) return;
+                this.gameStarted = true;
+                this.startTime = Date.now();
+                document.getElementById('startBtn').disabled = true;
+                this.startTimer();
+            }
+
+            startTimer() {
+                this.timerInterval = setInterval(() => {
+                    if (this.gameStarted && !this.gameWon) {
+                        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                        const minutes = Math.floor(elapsed / 60);
+                        const seconds = elapsed % 60;
+                        document.getElementById('timer').textContent = 
+                            `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    }
+                }, 100);
+            }
+
+            stopTimer() {
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+            }
+
+            reset() {
+                this.stopTimer();
+                this.initializeBoard();
+                this.calculateCanvasSize();
+                this.draw();
+            }
+
+            calculateCanvasSize() {
+                const maxSize = Math.min(window.innerWidth - 60, 600);
+                this.cellSize = Math.floor(maxSize / this.boardSize);
+                this.canvas.width = this.cellSize * this.boardSize;
+                this.canvas.height = this.cellSize * this.boardSize;
+            }
+
+            getClickCoordinates(clientX, clientY) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+                const col = Math.floor(x / this.cellSize);
+                const row = Math.floor(y / this.cellSize);
+                
+                if (row >= 0 && row < this.boardSize && col >= 0 && col < this.boardSize) {
+                    return { row, col };
+                }
+                return null;
+            }
+
+            handleClick(e) {
+                if (!this.gameStarted || this.gameWon) return;
+                const coords = this.getClickCoordinates(e.clientX, e.clientY);
+                if (coords) {
+                    this.flipCell(coords.row, coords.col);
+                }
+            }
+
+            handleTouch(e) {
+                e.preventDefault();
+                if (!this.gameStarted || this.gameWon) return;
+                const touch = e.changedTouches[0];
+                const coords = this.getClickCoordinates(touch.clientX, touch.clientY);
+                if (coords) {
+                    this.flipCell(coords.row, coords.col);
+                }
+            }
+
+            flipCell(row, col) {
+                this.clicks++;
+                document.getElementById('clicks').textContent = this.clicks;
+
+                const toggle = (r, c) => {
+                    if (r >= 0 && r < this.boardSize && c >= 0 && c < this.boardSize) {
+                        this.board[r][c] = this.board[r][c] === 'red' ? 'blue' : 'red';
+                    }
+                };
+
+                toggle(row, col);
+                toggle(row - 1, col);
+                toggle(row + 1, col);
+                toggle(row, col - 1);
+                toggle(row, col + 1);
+
+                this.draw();
+                this.updateProgress();
+                this.checkWin();
+            }
+
+            updateProgress() {
+                let redCount = 0;
+                const total = this.boardSize * this.boardSize;
+                for (let i = 0; i < this.boardSize; i++) {
+                    for (let j = 0; j < this.boardSize; j++) {
+                        if (this.board[i][j] === 'red') redCount++;
+                    }
+                }
+                const percentage = Math.floor((redCount / total) * 100);
+                document.getElementById('progress').textContent = percentage + '%';
+                return percentage;
+            }
+
+            checkWin() {
+                for (let i = 0; i < this.boardSize; i++) {
+                    for (let j = 0; j < this.boardSize; j++) {
+                        if (this.board[i][j] !== 'red') return;
+                    }
+                }
+                this.gameWon = true;
+                this.stopTimer();
+                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('message').textContent = 
+                    `🎉 WYGRANA! Czas: ${minutes}:${seconds.toString().padStart(2, '0')} | Kliknięcia: ${this.clicks}`;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('startBtn').textContent = '▶ Nowa Gra';
+            }
+
+            draw() {
+                this.calculateCanvasSize();
+                this.ctx.fillStyle = '#f0f0f0';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                for (let i = 0; i < this.boardSize; i++) {
+                    for (let j = 0; j < this.boardSize; j++) {
+                        this.drawCell(i, j);
+                    }
+                }
+            }
+
+            drawCell(row, col) {
+                const x = col * this.cellSize;
+                const y = row * this.cellSize;
+                const padding = 2;
+
+                this.ctx.fillStyle = this.board[row][col] === 'red' ? '#FF4444' : '#4444FF';
+                this.ctx.fillRect(x + padding, y + padding, this.cellSize - 2 * padding, this.cellSize - 2 * padding);
+
+                this.ctx.strokeStyle = '#ddd';
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeRect(x + padding, y + padding, this.cellSize - 2 * padding, this.cellSize - 2 * padding);
+            }
+        }
+
+        // Inicjalizacja gry
+        let game;
+        window.addEventListener('DOMContentLoaded', () => {
+            game = new FlipGame();
+        });
+    </script>
+</body>
+</html>
