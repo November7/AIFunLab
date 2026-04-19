@@ -235,7 +235,6 @@
                     <option value="15">15×15</option>
                 </select>
             </div>
-            <button class="btn-start" id="startBtn">▶ Start</button>
             <button class="btn-reset" id="resetBtn">↻ Reset</button>
         </div>
 
@@ -287,7 +286,6 @@
             }
 
             setupEventListeners() {
-                document.getElementById('startBtn').addEventListener('click', () => this.start());
                 document.getElementById('resetBtn').addEventListener('click', () => this.reset());
                 document.getElementById('boardSize').addEventListener('change', (e) => {
                     this.boardSize = parseInt(e.target.value);
@@ -310,11 +308,9 @@
                 this.clicks = 0;
                 this.gameStarted = false;
                 this.gameWon = false;
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('startBtn').textContent = '▶ Start';
                 document.getElementById('message').textContent = '';
                 document.getElementById('clicks').textContent = '0';
-                document.getElementById('timer').textContent = '0:00';
+                document.getElementById('timer').textContent = '0:00.000';
                 this.updateProgress();
             }
 
@@ -322,20 +318,20 @@
                 if (this.gameStarted || this.gameWon) return;
                 this.gameStarted = true;
                 this.startTime = Date.now();
-                document.getElementById('startBtn').disabled = true;
                 this.startTimer();
             }
 
             startTimer() {
                 this.timerInterval = setInterval(() => {
                     if (this.gameStarted && !this.gameWon) {
-                        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-                        const minutes = Math.floor(elapsed / 60);
-                        const seconds = elapsed % 60;
+                        const elapsed = Date.now() - this.startTime;
+                        const minutes = Math.floor(elapsed / 60000);
+                        const seconds = Math.floor((elapsed % 60000) / 1000);
+                        const milliseconds = elapsed % 1000;
                         document.getElementById('timer').textContent = 
-                            `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                            `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
                     }
-                }, 100);
+                }, 10);
             }
 
             stopTimer() {
@@ -373,7 +369,10 @@
             }
 
             handleClick(e) {
-                if (!this.gameStarted || this.gameWon) return;
+                if (this.gameWon) return;
+                if (!this.gameStarted) {
+                    this.start();
+                }
                 const coords = this.getClickCoordinates(e.clientX, e.clientY);
                 if (coords) {
                     this.flipCell(coords.row, coords.col);
@@ -382,7 +381,10 @@
 
             handleTouch(e) {
                 e.preventDefault();
-                if (!this.gameStarted || this.gameWon) return;
+                if (this.gameWon) return;
+                if (!this.gameStarted) {
+                    this.start();
+                }
                 const touch = e.changedTouches[0];
                 const coords = this.getClickCoordinates(touch.clientX, touch.clientY);
                 if (coords) {
@@ -432,13 +434,12 @@
                 }
                 this.gameWon = true;
                 this.stopTimer();
-                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-                const minutes = Math.floor(elapsed / 60);
-                const seconds = elapsed % 60;
+                const elapsed = Date.now() - this.startTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                const milliseconds = elapsed % 1000;
                 document.getElementById('message').textContent = 
-                    `🎉 WYGRANA! Czas: ${minutes}:${seconds.toString().padStart(2, '0')} | Kliknięcia: ${this.clicks}`;
-                document.getElementById('startBtn').disabled = false;
-                document.getElementById('startBtn').textContent = '▶ Nowa Gra';
+                    `🎉 WYGRANA! Czas: ${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')} | Kliknięcia: ${this.clicks}`;
             }
 
             draw() {
