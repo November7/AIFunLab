@@ -1,0 +1,5 @@
+Wersja 1 [PL]
+
+1. utwórz grę html, js i css - arcanoid
+2. przekształć grę składającą się z arcanoid.html, scripts.js i styles.css w jednoplikową grę. rozbuduj interfejs do pełnoekranowej gry dostosowanej do ekranu full hd. porpaw interfejs i kolorystyję, dodaj animacje, punktu i bonusy.
+3. Sprawdziłem plik po zmianach: walidacja arcanoid.html nie zgłasza błędów, a osadzony JavaScript przeszedł kontrolę składni w Node. Jeśli chcesz, mogę w następnym kroku 1. dodać obsługę dotyku/myszy, 2. dopisać tablicę rekordów, 3. usunąć lub zarchiwizować starą logikę z script.js i styles.css. - wykonaj kroki 1,2,3 (usuń pliki)
