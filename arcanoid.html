@@ -115,6 +115,33 @@
             line-height: 1.45;
         }
 
+        .topbar-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .audio-button {
+            appearance: none;
+            border: 1px solid rgba(124, 247, 255, 0.34);
+            border-radius: 999px;
+            background: rgba(4, 16, 28, 0.72);
+            color: var(--text-main);
+            font-size: 0.85rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+        }
+
+        .audio-button:hover {
+            background: rgba(12, 36, 56, 0.86);
+            border-color: rgba(124, 247, 255, 0.55);
+            transform: translateY(-1px);
+        }
+
         .arena-shell {
             position: relative;
             width: min(1600px, 100%);
@@ -422,6 +449,10 @@
             .hint {
                 text-align: left;
             }
+
+            .topbar-actions {
+                align-items: flex-start;
+            }
         }
 
         @media (max-width: 760px) {
@@ -461,7 +492,10 @@
                 <h1>Neon Arkanoid X</h1>
                 <p>Jednoplikowa wersja z nowym HUD-em, bonusami i płynnymi animacjami.</p>
             </div>
-            <p class="hint">Sterowanie: A/D lub strzałki, mysz albo dotyk. Spacja wznawia. Rozbijaj bloki, buduj combo i łap kapsuły bonusowe zanim spadną poza planszę.</p>
+            <div class="topbar-actions">
+                <p class="hint">Sterowanie: A/D lub strzałki, mysz albo dotyk. Spacja wznawia. Rozbijaj bloki, buduj combo i łap kapsuły bonusowe zanim spadną poza planszę.</p>
+                <button class="audio-button" id="audioToggle" type="button">Audio: ON</button>
+            </div>
         </header>
 
         <section class="arena-shell">
@@ -539,6 +573,7 @@
         const overlayText = document.getElementById('overlayText');
         const primaryButton = document.getElementById('primaryButton');
         const secondaryButton = document.getElementById('secondaryButton');
+        const audioToggle = document.getElementById('audioToggle');
         const scoreboardList = document.getElementById('scoreboardList');
         const scoreValue = document.getElementById('scoreValue');
         const comboValue = document.getElementById('comboValue');
@@ -587,6 +622,25 @@
             }
         };
 
+        const audioState = {
+            enabled: true,
+            started: false,
+            context: null,
+            masterGain: null,
+            musicGain: null,
+            sfxGain: null,
+            leadTimer: 0,
+            bassTimer: 0,
+            leadIndex: 0,
+            bassIndex: 0
+        };
+
+        const leadPattern = [
+            76, 79, 83, 79, 74, 78, 81, 78,
+            72, 76, 79, 76, 74, 76, 71, null
+        ];
+        const bassPattern = [52, null, 52, null, 48, null, 50, null];
+
         let animationFrameId = 0;
         let lastTimestamp = 0;
         let gameState = 'idle';
@@ -608,6 +662,150 @@
         const pointerState = { x: null, active: false };
         let highScores = loadHighScores();
         let runSaved = false;
+
+        function updateAudioButton() {
+            audioToggle.textContent = audioState.enabled ? 'Audio: ON' : 'Audio: OFF';
+        }
+
+        function ensureAudioReady() {
+            if (!audioState.enabled) {
+                return;
+            }
+
+            if (!audioState.context) {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) {
+                    audioState.enabled = false;
+                    updateAudioButton();
+                    return;
+                }
+
+                const context = new Ctx();
+                const masterGain = context.createGain();
+                const musicGain = context.createGain();
+                const sfxGain = context.createGain();
+
+                masterGain.gain.value = 0.42;
+                musicGain.gain.value = 0.18;
+                sfxGain.gain.value = 0.38;
+
+                musicGain.connect(masterGain);
+                sfxGain.connect(masterGain);
+                masterGain.connect(context.destination);
+
+                audioState.context = context;
+                audioState.masterGain = masterGain;
+                audioState.musicGain = musicGain;
+                audioState.sfxGain = sfxGain;
+            }
+
+            if (audioState.context.state === 'suspended') {
+                audioState.context.resume();
+            }
+
+            audioState.started = true;
+        }
+
+        function playTone({ freq, duration = 0.12, type = 'square', gain = 0.08, bus = 'sfx', attack = 0.004, release = 0.06 }) {
+            if (!audioState.enabled || !audioState.started || !audioState.context) {
+                return;
+            }
+
+            const context = audioState.context;
+            const oscillator = context.createOscillator();
+            const envelope = context.createGain();
+            const now = context.currentTime;
+            const targetBus = bus === 'music' ? audioState.musicGain : audioState.sfxGain;
+
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(freq, now);
+            envelope.gain.setValueAtTime(0.0001, now);
+            envelope.gain.exponentialRampToValueAtTime(gain, now + attack);
+            envelope.gain.exponentialRampToValueAtTime(0.0001, now + duration + release);
+
+            oscillator.connect(envelope);
+            envelope.connect(targetBus);
+            oscillator.start(now);
+            oscillator.stop(now + duration + release + 0.03);
+        }
+
+        function playKick() {
+            if (!audioState.enabled || !audioState.started || !audioState.context) {
+                return;
+            }
+
+            const context = audioState.context;
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            const now = context.currentTime;
+
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(170, now);
+            oscillator.frequency.exponentialRampToValueAtTime(55, now + 0.12);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+
+            oscillator.connect(gain);
+            gain.connect(audioState.sfxGain);
+            oscillator.start(now);
+            oscillator.stop(now + 0.18);
+        }
+
+        function playSfx(type) {
+            if (!audioState.enabled || !audioState.started) {
+                return;
+            }
+
+            if (type === 'brick') {
+                playTone({ freq: 640, duration: 0.05, gain: 0.06, type: 'square' });
+            } else if (type === 'paddle') {
+                playTone({ freq: 430, duration: 0.07, gain: 0.07, type: 'square' });
+            } else if (type === 'bonus') {
+                playTone({ freq: 760, duration: 0.07, gain: 0.075, type: 'square' });
+                playTone({ freq: 1010, duration: 0.1, gain: 0.045, type: 'triangle', attack: 0.01 });
+            } else if (type === 'lifeLost') {
+                playTone({ freq: 320, duration: 0.08, gain: 0.07, type: 'sawtooth' });
+                playTone({ freq: 220, duration: 0.14, gain: 0.07, type: 'sawtooth', attack: 0.006 });
+            } else if (type === 'victory') {
+                playTone({ freq: 523, duration: 0.09, gain: 0.07, type: 'square' });
+                playTone({ freq: 659, duration: 0.11, gain: 0.065, type: 'square', attack: 0.01 });
+                playTone({ freq: 784, duration: 0.14, gain: 0.06, type: 'triangle', attack: 0.015 });
+            } else if (type === 'start') {
+                playKick();
+            }
+        }
+
+        function updateMusic(deltaMs) {
+            if (!audioState.enabled || !audioState.started || gameState !== 'running') {
+                return;
+            }
+
+            audioState.leadTimer += deltaMs;
+            audioState.bassTimer += deltaMs;
+
+            const leadStepMs = 140;
+            const bassStepMs = 280;
+
+            while (audioState.leadTimer >= leadStepMs) {
+                audioState.leadTimer -= leadStepMs;
+                const note = leadPattern[audioState.leadIndex % leadPattern.length];
+                audioState.leadIndex += 1;
+                if (note !== null) {
+                    const freq = 440 * (2 ** ((note - 69) / 12));
+                    playTone({ freq, duration: 0.085, gain: 0.05, type: 'square', bus: 'music' });
+                }
+            }
+
+            while (audioState.bassTimer >= bassStepMs) {
+                audioState.bassTimer -= bassStepMs;
+                const note = bassPattern[audioState.bassIndex % bassPattern.length];
+                audioState.bassIndex += 1;
+                if (note !== null) {
+                    const freq = 440 * (2 ** ((note - 69) / 12));
+                    playTone({ freq, duration: 0.2, gain: 0.06, type: 'triangle', bus: 'music', attack: 0.006, release: 0.08 });
+                }
+            }
+        }
 
         function createPaddle() {
             return {
@@ -789,6 +987,7 @@
         }
 
         function startGame() {
+            ensureAudioReady();
             if (gameState === 'running') {
                 return;
             }
@@ -796,6 +995,7 @@
                 resetRound(gameState !== 'paused');
             }
             gameState = 'running';
+            playSfx('start');
             hideOverlay();
             lastTimestamp = 0;
             cancelAnimationFrame(animationFrameId);
@@ -807,14 +1007,21 @@
                 return;
             }
             gameState = 'paused';
+            if (audioState.musicGain && audioState.context) {
+                audioState.musicGain.gain.setTargetAtTime(0.04, audioState.context.currentTime, 0.06);
+            }
             showOverlay('Pauza', 'Gra została zatrzymana. Wciśnij spację albo kliknij przycisk, aby wrócić do rozgrywki.', 'Wznów');
         }
 
         function resumeGame() {
+            ensureAudioReady();
             if (gameState !== 'paused') {
                 return;
             }
             gameState = 'running';
+            if (audioState.musicGain && audioState.context) {
+                audioState.musicGain.gain.setTargetAtTime(0.18, audioState.context.currentTime, 0.08);
+            }
             hideOverlay();
             lastTimestamp = 0;
             cancelAnimationFrame(animationFrameId);
@@ -833,11 +1040,13 @@
 
             if (lives <= 0) {
                 gameState = 'gameover';
+                playSfx('lifeLost');
                 const highScoreMessage = finalizeRun();
                 showOverlay('Koniec gry', `Zdobyty wynik: ${score}. Osiągnięty poziom: ${level}. Spróbuj ponownie i utrzymaj dłuższe combo.${highScoreMessage}`, 'Zagraj ponownie');
                 return;
             }
 
+            playSfx('lifeLost');
             paddle = createPaddle();
             balls = [createBall()];
             showOverlay('Strata życia', 'Wracasz na planszę. Bonusy wygasły, ale poziom i punkty zostają.', 'Wracaj do gry');
@@ -851,6 +1060,7 @@
 
             if (level > 4) {
                 gameState = 'victory';
+                playSfx('victory');
                 updateHud();
                 const highScoreMessage = finalizeRun();
                 showOverlay('Zwycięstwo', `Arena wyczyszczona. Końcowy wynik: ${score}. Możesz rozpocząć nową sesję i pobić rezultat.${highScoreMessage}`, 'Nowa gra');
@@ -908,6 +1118,7 @@
         function applyBonus(type) {
             const bonus = bonusTypes[type];
             flashAlpha = 0.18;
+            playSfx('bonus');
             spawnParticles(paddle.x + paddle.width / 2, paddle.y, bonus.color, 18, 1.2);
 
             if (type === 'expand') {
@@ -950,6 +1161,7 @@
 
         function handleBrickHit(brick, ball) {
             ball.vy *= -1;
+            playSfx('brick');
             brick.strength -= 1;
             comboTimer = config.comboWindow;
             combo = Math.min(combo + 1, 9);
@@ -975,6 +1187,7 @@
             ball.vx = Math.sin(angle) * speed;
             ball.vy = -Math.cos(angle) * speed;
             paddle.glow = 360;
+            playSfx('paddle');
             comboTimer = Math.min(comboTimer + 300, config.comboWindow);
             spawnParticles(ball.x, paddle.y, '#ecfeff', 10, 0.9);
         }
@@ -1117,6 +1330,7 @@
             const deltaSeconds = Math.min(deltaMs / 1000, 0.018);
 
             updateStars(deltaSeconds);
+            updateMusic(deltaMs);
 
             if (gameState !== 'running') {
                 updateParticles(deltaMs);
@@ -1323,6 +1537,9 @@
         }
 
         function handleKeyChange(event, pressed) {
+            if (pressed) {
+                ensureAudioReady();
+            }
             if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') {
                 input.left = pressed;
             }
@@ -1347,6 +1564,7 @@
             syncPointer(event.clientX);
         });
         arenaShell.addEventListener('pointerdown', (event) => {
+            ensureAudioReady();
             pointerState.active = true;
             syncPointer(event.clientX);
             if (gameState === 'idle') {
@@ -1366,6 +1584,7 @@
         });
 
         primaryButton.addEventListener('click', () => {
+            ensureAudioReady();
             if (gameState === 'paused') {
                 resumeGame();
             } else {
@@ -1374,12 +1593,31 @@
         });
 
         secondaryButton.addEventListener('click', () => {
+            ensureAudioReady();
             gameState = 'idle';
             resetRound(true);
             showOverlay('Start gry', 'Wejdź do neonowej areny. Każdy rozbity blok daje punkty, a seria trafień zwiększa mnożnik. Bonusy mogą rozszerzyć paletkę, spowolnić piłkę albo uruchomić multiball.', 'Rozpocznij');
         });
 
+        audioToggle.addEventListener('click', () => {
+            audioState.enabled = !audioState.enabled;
+            updateAudioButton();
+            if (!audioState.enabled) {
+                if (audioState.masterGain && audioState.context) {
+                    audioState.masterGain.gain.setTargetAtTime(0.0001, audioState.context.currentTime, 0.03);
+                }
+                return;
+            }
+
+            ensureAudioReady();
+            if (audioState.masterGain && audioState.context) {
+                audioState.masterGain.gain.setTargetAtTime(0.42, audioState.context.currentTime, 0.04);
+            }
+            playSfx('start');
+        });
+
         createStars();
+        updateAudioButton();
         renderHighScores();
         resetRound(true);
         draw();
