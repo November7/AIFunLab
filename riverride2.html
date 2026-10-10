@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>River Ride 2 · Atari style</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Courier New", monospace;
+      background: #151515;
+      color: #d6d6c8;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 22px 16px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #151515;
+    }
+
+    header {
+      width: min(960px, 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      color: #e8e85c;
+      font-size: clamp(1.55rem, 5vw, 2.25rem);
+      letter-spacing: .12em;
+      line-height: 1;
+    }
+
+    .edition {
+      margin: 7px 0 0;
+      color: #a4a497;
+      font-size: .78rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .hint {
+      margin: 0;
+      color: #a4a497;
+      font-size: .82rem;
+      text-align: right;
+    }
+
+    .hud {
+      width: min(960px, 100%);
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0;
+      background: #252525;
+      border: 4px solid #080808;
+      border-top: 0;
+    }
+
+    .readout {
+      min-width: 0;
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .readout-label {
+      display: block;
+      margin-bottom: 3px;
+      color: #aaa99a;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .readout-value {
+      color: #e8e85c;
+      font-size: clamp(.9rem, 3vw, 1.1rem);
+      font-variant-numeric: tabular-nums;
+      font-weight: 750;
+      line-height: 1.1;
+    }
+
+    .meter {
+      height: 4px;
+      margin-top: 7px;
+      overflow: hidden;
+      background: #414141;
+    }
+
+    .meter-fill {
+      width: 100%;
+      height: 100%;
+      background: #e8e85c;
+    }
+
+    #ammo-meter .meter-fill { background: #b8b840; }
+
+    /* The original-style score and fuel gauge are drawn inside the screen.
+       Keep their DOM equivalents available to assistive technology. */
+    .hud .readout:first-child, .hud .readout:nth-child(3) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .game-frame {
+      width: min(960px, 100%);
+      padding: 0;
+      border: 4px solid #080808;
+      background: #080808;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 4 / 3;
+      background: #2d32b8;
+      image-rendering: pixelated;
+      touch-action: none;
+    }
+
+    .legend {
+      width: min(960px, 100%);
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-top: 1px solid #414141;
+    }
+
+    .legend-title {
+      margin: 0 0 8px;
+      color: #aaa99a;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .legend-items {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px 18px;
+      color: #c4c4b8;
+      font-size: .8rem;
+    }
+
+    .legend-items span { white-space: nowrap; }
+    .legend-note {
+      margin: 12px 0 0;
+      color: #aaa99a;
+      font-size: .75rem;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .key {
+      display: inline-block;
+      min-width: 25px;
+      margin-right: 4px;
+      padding: 2px 5px;
+      border: 1px solid #55554c;
+      background: #252525;
+      color: #e8e85c;
+      font-size: .72rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .credits {
+      width: min(960px, 100%);
+      margin-top: 16px;
+      color: #a4a497;
+      font-size: .75rem;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 16px 10px 22px; }
+      header { align-items: start; }
+      .hint { max-width: 120px; font-size: .72rem; }
+      .hud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .readout { padding: 8px 10px; }
+      .game-frame { padding: 0; }
+      .legend-items { justify-content: flex-start; gap: 8px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>RIVER RIDE</h1>
+      <p class="edition">Wersja 2 · W stylu Atari 2600</p>
+    </div>
+    <p class="hint">Nowy lot: odśwież stronę.</p>
+  </header>
+
+  <main class="game-frame">
+    <canvas id="game" width="480" height="360" aria-label="Gra River Ride. Strzałkami steruj samolotem, spacją strzelaj."></canvas>
+  </main>
+
+  <section class="hud" aria-label="Wyniki gry">
+    <div class="readout">
+      <span class="readout-label">Paliwo</span>
+      <span class="readout-value"><span id="fuel">100</span>%</span>
+      <div class="meter" id="fuel-meter" role="meter" aria-label="Poziom paliwa" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+        <div class="meter-fill"></div>
+      </div>
+    </div>
+    <div class="readout">
+      <span class="readout-label">Amunicja</span>
+      <span class="readout-value" id="ammo">200</span>
+      <div class="meter" id="ammo-meter" role="meter" aria-label="Amunicja" aria-valuemin="0" aria-valuemax="200" aria-valuenow="200">
+        <div class="meter-fill"></div>
+      </div>
+    </div>
+    <div class="readout">
+      <span class="readout-label">Wynik</span>
+      <span class="readout-value" id="score">0</span>
+    </div>
+    <div class="readout">
+      <span class="readout-label">Prędkość</span>
+      <span class="readout-value" id="speed-label">NORMAL</span>
+    </div>
+  </section>
+
+  <aside class="legend" aria-label="Legenda sterowania i obiektów">
+    <p class="legend-title">Sterowanie i legenda</p>
+    <div class="legend-items">
+      <span><b class="key">← →</b> sterowanie</span>
+      <span><b class="key">↑</b> szybko · 4× paliwo</span>
+      <span><b class="key">↓</b> wolno · 1× paliwo</span>
+      <span><b class="key">—</b> normalnie · 2× paliwo</span>
+      <span><b class="key">SPACJA</b> strzał</span>
+      <span><b style="color:#79bfc5">■</b> okręt · 100 pkt</span>
+      <span><b style="color:#cf4545">▮</b> FUEL · paliwo · 75 pkt</span>
+      <span><b style="color:#e8e85c">●</b> amunicja · 50 pkt</span>
+    </div>
+    <p class="legend-note">FUEL: zwolnij nad zbiornikiem, aby zatankować więcej. Zbiornik zostaje na rzece — możesz go jeszcze zestrzelić za 75 pkt.</p>
+  </aside>
+
+  <footer class="credits">Utworzono z pomocą OpenAI Codex · model GPT-6</footer>
+
+  <script>
+    'use strict';
+
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const fuelEl = document.getElementById('fuel');
+    const ammoEl = document.getElementById('ammo');
+    const scoreEl = document.getElementById('score');
+    const speedEl = document.getElementById('speed-label');
+    const fuelMeter = document.querySelector('#fuel-meter .meter-fill');
+    const ammoMeter = document.querySelector('#ammo-meter .meter-fill');
+    const fuelMeterTrack = document.getElementById('fuel-meter');
+    const ammoMeterTrack = document.getElementById('ammo-meter');
+    const W = canvas.width;
+    const H = 288; // The bottom 72 pixels belong to the Atari-style instrument panel.
+    ctx.imageSmoothingEnabled = false;
+    const COLORS = {
+      water: '#2d32b8', land: '#6c963e', yellow: '#e8df83',
+      panel: '#6b6b6b', ink: '#101010', ship: '#79bfc5', red: '#b84135'
+    };
+    const BASE_FRAME_MS = 1000 / 60;
+    const RIVER_WIDTH = 280;
+    const BASE_FUEL_USE = 0.003;
+    const REFUEL_PER_SECOND = 15;
+    const CRASH_DURATION_MS = 900;
+    const PLANE_SPRITE = [
+      '.....YY.....', '.....YY.....', '.....YY.....', '....YYYY....',
+      '....YYYY....', '...YYYYYY...', '..YYYYYYYY..', '.YYYYYYYYYY.',
+      'YYYYYYYYYYYY', '....YYYY....', '...YYYYYY...', '..YYY..YYY..'
+    ];
+    // [distance, center, total width, island width]. Equal widths at adjacent
+    // points keep both banks parallel, including through bends.
+    const RIVER_COURSE = [
+      [0, 240, RIVER_WIDTH, 0],
+      [180, 240, RIVER_WIDTH, 0],
+      [360, 288, RIVER_WIDTH, 0],
+      [520, 288, RIVER_WIDTH, 0],
+      [720, 224, RIVER_WIDTH, 0],
+      [880, 224, 192, 0],
+      [1060, 224, 192, 0],
+      [1260, 240, 360, 0],
+      [1380, 240, 360, 0],
+      [1500, 240, 360, 104],
+      [1680, 240, 360, 104],
+      [1800, 240, 360, 0],
+      [1920, 240, RIVER_WIDTH, 0],
+      [2120, 176, RIVER_WIDTH, 0],
+      [2280, 176, RIVER_WIDTH, 0],
+      [2480, 240, RIVER_WIDTH, 0],
+      [2640, 240, 344, 0],
+      [2800, 240, 344, 0],
+      [2980, 240, RIVER_WIDTH, 0],
+      [3160, 240, RIVER_WIDTH, 0]
+    ];
+
+    const plane = { x: W / 2 - 12, y: H - 50, w: 24, h: 24, speed: 1.5 };
+    const keys = new Set();
+    let fuels = [];
+    let ammoBoxes = [];
+    let ships = [];
+    let shipExplosions = [];
+    let bullets = [];
+    let fuel = 100;
+    let ammo = 200;
+    let score = 0;
+    let gameOver = false;
+    let gameOverMessage = '';
+    let crash = null;
+    let lastTime = 0;
+    let animationId = 0;
+    let shootCooldown = 0;
+    let worldDistance = 0;
+
+    function setKey(event, isDown) {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) {
+        event.preventDefault();
+      }
+      if (gameOver) return;
+      if (isDown) keys.add(event.key);
+      else keys.delete(event.key);
+    }
+
+    window.addEventListener('keydown', event => setKey(event, true));
+    window.addEventListener('keyup', event => setKey(event, false));
+    window.addEventListener('blur', () => keys.clear());
+
+    // Terrain and objects share world coordinates, so they scroll together.
+    // Every rendered row, collision and spawn uses these same water channels.
+    function riverBounds(y) {
+      const length = RIVER_COURSE[RIVER_COURSE.length - 1][0];
+      const distance = ((worldDistance - y) % length + length) % length;
+      const next = RIVER_COURSE.findIndex(point => point[0] > distance);
+      const a = RIVER_COURSE[next - 1];
+      const b = RIVER_COURSE[next];
+      const t = (distance - a[0]) / (b[0] - a[0]);
+      const center = Math.round((a[1] + (b[1] - a[1]) * t) / 4) * 4;
+      const width = Math.round((a[2] + (b[2] - a[2]) * t) / 8) * 8;
+      const islandWidth = Math.round((a[3] + (b[3] - a[3]) * t) / 8) * 8;
+      return {
+        left: center - width / 2,
+        right: center + width / 2,
+        islandLeft: center - islandWidth / 2,
+        islandRight: center + islandWidth / 2
+      };
+    }
+
+    function riverChannels(y) {
+      const bank = riverBounds(y);
+      return bank.islandRight > bank.islandLeft
+        ? [{ left: bank.left, right: bank.islandLeft },
+           { left: bank.islandRight, right: bank.right }]
+        : [{ left: bank.left, right: bank.right }];
+    }
+
+    function isOverWater(rect) {
+      for (let y = Math.floor(rect.y); y < Math.ceil(rect.y + rect.h); y++) {
+        if (!riverChannels(y).some(channel =>
+          rect.x >= channel.left && rect.x + rect.w <= channel.right)) return false;
+      }
+      return true;
+    }
+
+    function randomRiverX(width, y, height) {
+      // Intersect usable horizontal ranges across the full object height.
+      // This also keeps objects clear of the pointed ends of an island.
+      const margin = 12;
+      let ranges = [{ left: 0, right: W - width }];
+      for (let row = Math.floor(y); row < Math.ceil(y + height); row++) {
+        const channels = riverChannels(row);
+        ranges = ranges.flatMap(range => channels.map(channel => ({
+          left: Math.max(range.left, channel.left + margin),
+          right: Math.min(range.right, channel.right - margin - width)
+        })).filter(range => range.left <= range.right));
+        if (!ranges.length) return null;
+      }
+      const range = ranges[Math.min(ranges.length - 1, Math.floor(Math.random() * ranges.length))];
+      return range.left + Math.random() * (range.right - range.left);
+    }
+
+    function spawnShip(y) {
+      const x = randomRiverX(48, y, 18);
+      if (x !== null) ships.push({ x, y, w: 48, h: 18, hp: 2, hitFlash: 0 });
+    }
+
+    function spawnFuel(y) {
+      const x = randomRiverX(24, y, 40);
+      if (x !== null) fuels.push({ x, y, w: 24, h: 40, hp: 2, hitFlash: 0 });
+    }
+
+    function spawnAmmo(y) {
+      const x = randomRiverX(24, y, 24);
+      if (x !== null) ammoBoxes.push({ x, y, r: 12, hp: 2, hitFlash: 0 });
+    }
+
+    function seedWorld() {
+      spawnShip(36);
+      spawnFuel(116);
+      spawnAmmo(-80);
+      for (let i = 1; i < 10; i++) {
+        if (Math.random() < 0.10) spawnShip(-i * 200);
+        if (Math.random() < 0.066) spawnFuel(-i * 150);
+        if (Math.random() < 0.03) spawnAmmo(-i * 180);
+      }
+    }
+
+    function shoot() {
+      if (gameOver || ammo <= 0 || shootCooldown > 0) return;
+      ammo--;
+      bullets.push({
+        x: plane.x + plane.w / 2 - 2,
+        y: plane.y - 8,
+        w: 4,
+        h: 12,
+        speed: 3.5
+      });
+      shootCooldown = 10;
+    }
+
+    function rectsCollide(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x &&
+        a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function circleRectCollide(circle, rect) {
+      const cx = circle.x + circle.r;
+      const cy = circle.y + circle.r;
+      const closestX = Math.max(rect.x, Math.min(cx, rect.x + rect.w));
+      const closestY = Math.max(rect.y, Math.min(cy, rect.y + rect.h));
+      const dx = cx - closestX;
+      const dy = cy - closestY;
+      return dx * dx + dy * dy < circle.r * circle.r;
+    }
+
+    function endGame(message) {
+      if (gameOver) return;
+      gameOver = true;
+      gameOverMessage = message;
+      // Each fragment starts at an actual pixel of the plane, so its silhouette
+      // breaks apart instead of being replaced by an unrelated explosion sprite.
+      const pixels = [];
+      PLANE_SPRITE.forEach((row, iy) => {
+        [...row].forEach((pixel, ix) => {
+          if (pixel !== 'Y') return;
+          pixels.push({
+            x: Math.round(plane.x / 2) * 2 + ix * 2,
+            y: Math.round(plane.y / 2) * 2 + iy * 2,
+            vx: (ix - 5.5) * (4 + Math.random() * 5),
+            vy: (iy - 5.5) * (4 + Math.random() * 5) - 12,
+            delay: Math.random() * 80,
+            life: 360 + Math.random() * 400
+          });
+        });
+      });
+      crash = { elapsed: 0, pixels };
+      keys.clear();
+      updateHud();
+    }
+
+    function updateHud() {
+      const displayedFuel = Math.max(0, Math.ceil(fuel));
+      fuelEl.textContent = displayedFuel;
+      ammoEl.textContent = ammo;
+      scoreEl.textContent = Math.floor(score);
+      fuelMeter.style.width = `${Math.max(0, fuel)}%`;
+      fuelMeter.style.backgroundColor = fuel < 25 ? COLORS.red : COLORS.yellow;
+      ammoMeter.style.width = `${Math.max(0, ammo / 2)}%`;
+      fuelMeterTrack.setAttribute('aria-valuenow', String(displayedFuel));
+      ammoMeterTrack.setAttribute('aria-valuenow', String(ammo));
+
+      if (keys.has('ArrowUp')) speedEl.textContent = 'SZYBKO';
+      else if (keys.has('ArrowDown')) speedEl.textContent = 'WOLNO';
+      else speedEl.textContent = 'NORMAL';
+    }
+
+    function hitTarget(target, points) {
+      target.hp--;
+      target.hitFlash = 10;
+      if (target.hp <= 0) score += points;
+    }
+
+    function updateShipExplosions(dt, dy = 0) {
+      for (const explosion of shipExplosions) {
+        explosion.elapsed += dt;
+        explosion.y += dy;
+      }
+      shipExplosions = shipExplosions.filter(explosion => explosion.elapsed < 560);
+    }
+
+    function update(dt) {
+      if (gameOver) {
+        updateShipExplosions(dt);
+        if (crash) {
+          crash.elapsed += dt;
+          if (crash.elapsed >= CRASH_DURATION_MS) crash = null;
+        }
+        return;
+      }
+      const frameScale = dt / BASE_FRAME_MS;
+      const isFast = keys.has('ArrowUp');
+      const isSlow = !isFast && keys.has('ArrowDown');
+      const scrollSpeed = isFast ? 2 : isSlow ? 0.6 : 1.1;
+
+      if (keys.has('ArrowLeft')) plane.x -= plane.speed * frameScale;
+      if (keys.has('ArrowRight')) plane.x += plane.speed * frameScale;
+      plane.x = Math.max(0, Math.min(W - plane.w, plane.x));
+
+      if (keys.has(' ')) shoot();
+      shootCooldown = Math.max(0, shootCooldown - frameScale);
+
+      worldDistance += scrollSpeed * frameScale;
+      const dy = scrollSpeed * frameScale;
+      updateShipExplosions(dt, dy);
+
+      for (const object of [...fuels, ...ammoBoxes, ...ships]) {
+        object.y += dy;
+        object.hitFlash = Math.max(0, object.hitFlash - frameScale);
+      }
+      for (const bullet of bullets) bullet.y -= bullet.speed * frameScale;
+
+      fuels = fuels.filter(object => object.y < H + 45 && object.hp > 0);
+      ammoBoxes = ammoBoxes.filter(object => object.y < H + 45 && object.hp > 0);
+      ships = ships.filter(object => object.y < H + 45 && object.hp > 0);
+      bullets = bullets.filter(bullet => bullet.y + bullet.h > -10 && isOverWater(bullet));
+
+      if (Math.random() < 1 - Math.pow(1 - 0.005, frameScale)) spawnShip(-30);
+      if (Math.random() < 1 - Math.pow(1 - 0.0033, frameScale)) spawnFuel(-40);
+      if (Math.random() < 1 - Math.pow(1 - 0.002, frameScale)) spawnAmmo(-35);
+
+      if (!isOverWater(plane)) {
+        endGame('Uderzenie w brzeg');
+        return;
+      }
+
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const bullet = bullets[i];
+        let targetHit = false;
+
+        for (const ship of ships) {
+          if (ship.hp > 0 && rectsCollide(bullet, ship)) {
+            hitTarget(ship, 100);
+            if (ship.hp <= 0) {
+              shipExplosions.push({ x: ship.x + ship.w / 2, y: ship.y + ship.h / 2, elapsed: 0 });
+            }
+            targetHit = true;
+            break;
+          }
+        }
+        if (!targetHit) {
+          for (const container of fuels) {
+            if (container.hp > 0 && rectsCollide(bullet, container)) {
+              hitTarget(container, 75);
+              targetHit = true;
+              break;
+            }
+          }
+        }
+        if (!targetHit) {
+          for (const box of ammoBoxes) {
+            if (box.hp > 0 && circleRectCollide({ x: box.x, y: box.y, r: box.r }, bullet)) {
+              hitTarget(box, 50);
+              targetHit = true;
+              break;
+            }
+          }
+        }
+        if (targetHit) bullets.splice(i, 1);
+      }
+
+      fuels = fuels.filter(container => container.hp > 0);
+      ammoBoxes = ammoBoxes.filter(box => box.hp > 0);
+      ships = ships.filter(ship => ship.hp > 0);
+
+      // Fuel depots remain shootable until destroyed or scrolled off screen.
+      // Refuelling is time-based and does not stack when depots overlap.
+      const refueling = fuels.some(container => rectsCollide(plane, container));
+      const fuelMultiplier = isFast ? 4 : isSlow ? 1 : 2;
+      fuel = Math.min(100, fuel - BASE_FUEL_USE * fuelMultiplier * frameScale +
+        (refueling ? REFUEL_PER_SECOND * dt / 1000 : 0));
+      if (fuel <= 0) {
+        fuel = 0;
+        endGame('Zabrakło paliwa');
+        return;
+      }
+      for (let i = ammoBoxes.length - 1; i >= 0; i--) {
+        const box = ammoBoxes[i];
+        if (circleRectCollide({ x: box.x, y: box.y, r: box.r }, plane)) {
+          ammo += 50;
+          ammoBoxes.splice(i, 1);
+        }
+      }
+      if (ships.some(ship => rectsCollide(plane, ship))) {
+        endGame('Zderzenie z okrętem');
+        return;
+      }
+
+      score += 0.01 * frameScale;
+      updateHud();
+    }
+
+    // Small bitmap alphabet keeps every glyph crisp without external fonts.
+    const GLYPHS = {
+      '0': ['111','101','101','101','111'], '1': ['010','110','010','010','111'],
+      '2': ['111','001','111','100','111'], '3': ['111','001','111','001','111'],
+      '4': ['101','101','111','001','001'], '5': ['111','100','111','001','111'],
+      '6': ['111','100','111','101','111'], '7': ['111','001','010','010','010'],
+      '8': ['111','101','111','101','111'], '9': ['111','101','111','001','111'],
+      'A': ['010','101','111','101','101'], 'D': ['110','101','101','101','110'],
+      'E': ['111','100','110','100','111'], 'F': ['111','100','110','100','100'],
+      'G': ['111','100','101','101','111'], 'I': ['111','010','010','010','111'],
+      'L': ['100','100','100','100','111'], 'M': ['10001','11011','10101','10101','10001'],
+      'O': ['111','101','101','101','111'], 'R': ['110','101','110','101','101'],
+      'U': ['101','101','101','101','111'], 'V': ['101','101','101','101','010'],
+      '/': ['001','001','010','100','100'], ' ': ['000','000','000','000','000']
+    };
+
+    function pixelText(text, x, y, scaleX = 2, scaleY = scaleX, color = COLORS.yellow, centered = false) {
+      const letters = [...String(text)].map(letter => GLYPHS[letter] || GLYPHS[' ']);
+      const width = letters.reduce((sum, glyph) => sum + glyph[0].length + 1, -1) * scaleX;
+      let cursor = Math.round(centered ? x - width / 2 : x);
+      ctx.fillStyle = color;
+      for (const glyph of letters) {
+        for (let row = 0; row < glyph.length; row++) {
+          for (let col = 0; col < glyph[row].length; col++) {
+            if (glyph[row][col] === '1') ctx.fillRect(cursor + col * scaleX, y + row * scaleY, scaleX, scaleY);
+          }
+        }
+        cursor += (glyph[0].length + 1) * scaleX;
+      }
+    }
+
+    function sprite(rows, x, y, pixelX, pixelY, palette) {
+      const left = Math.round(x / 2) * 2;
+      const top = Math.round(y / 2) * 2;
+      rows.forEach((row, iy) => {
+        [...row].forEach((color, ix) => {
+          if (!palette[color]) return;
+          ctx.fillStyle = palette[color];
+          ctx.fillRect(left + ix * pixelX, top + iy * pixelY, pixelX, pixelY);
+        });
+      });
+    }
+
+    function drawBackground() {
+      ctx.fillStyle = COLORS.land;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = COLORS.water;
+      for (let y = 0; y < H; y++) {
+        for (const channel of riverChannels(y)) {
+          ctx.fillRect(channel.left, y, channel.right - channel.left, 1);
+        }
+      }
+    }
+
+    function drawFuel(container) {
+      ctx.save();
+      ctx.globalAlpha = container.hp === 1 ? 0.46 : 1;
+      const x = Math.round(container.x / 2) * 2;
+      const y = Math.round(container.y / 2) * 2;
+      // Stacked lettering is the distinctive original fuel-depot silhouette.
+      for (const [index, letter] of [...'FUEL'].entries()) {
+        ctx.fillStyle = container.hitFlash > 0 ? '#ffffff' : index % 2 === 0 ? '#bd727b' : '#d3d3c5';
+        ctx.fillRect(x, y + index * 10, container.w, 10);
+        pixelText(letter, x + 6, y + index * 10, 4, 2, COLORS.water);
+      }
+      ctx.restore();
+    }
+
+    function drawAmmo(box) {
+      ctx.save();
+      ctx.globalAlpha = box.hp === 1 ? 0.46 : 1;
+      sprite([
+        '...YYYYYY...', '..YYYYYYYY..', '.YYY....YYY.', 'YYY......YYY',
+        'YYY..YY..YYY', 'YYY..YY..YYY', 'YYY..YY..YYY', 'YYY..YY..YYY',
+        'YYY......YYY', '.YYY....YYY.', '..YYYYYYYY..', '...YYYYYY...'
+      ], box.x, box.y, 2, 2, { Y: box.hitFlash > 0 ? '#ffffff' : COLORS.yellow });
+      ctx.restore();
+    }
+
+    function drawShip(ship) {
+      ctx.save();
+      ctx.globalAlpha = ship.hp === 1 ? 0.46 : 1;
+      sprite([
+        '.......BB.......', '.......BB.......', '.....BBBB.......',
+        '.....BBBBBBB....', '...BBBBBBBBBBB..', 'RRRRRRRRRRRRRRRR',
+        '.RRRRRRRRRRRRRR.', '..GGGGGGGGGGGG..', '...GGGGGGGGGG...'
+      ], ship.x, ship.y, 3, 2, {
+        G: ship.hitFlash > 0 ? '#ffffff' : COLORS.ship,
+        R: ship.hitFlash > 0 ? '#ffffff' : COLORS.red, B: COLORS.ink
+      });
+      ctx.restore();
+    }
+
+    function drawPlane() {
+      sprite(PLANE_SPRITE, plane.x, plane.y, 2, 2, { Y: COLORS.yellow });
+    }
+
+    function drawShipExplosions() {
+      // Small horizontal dashes reproduce the ship-destruction reference.
+      // The effect is independent of the plane's larger coloured breakup.
+      const fragments = [
+        [-7, -3, 2], [1, -4, 2], [6, -2, 1], [-2, -1, 1],
+        [-8, 1, 2], [4, 1, 2], [-3, 3, 2], [8, 3, 1], [0, 5, 2]
+      ];
+      ctx.fillStyle = '#d4dda0';
+      for (const explosion of shipExplosions) {
+        const frame = Math.floor(explosion.elapsed / 80);
+        fragments.forEach(([dx, dy, width], index) => {
+          if (frame >= 4 + index % 3) return;
+          if (frame > 2 && (frame + index) % 3 === 0) return;
+          const x = Math.round(explosion.x / 2) * 2 + dx * 2 + Math.sign(dx) * frame * 2;
+          const y = Math.round(explosion.y / 2) * 2 + dy * 2 + Math.sign(dy) * frame * 2;
+          ctx.fillRect(x, y, width * 2, 2);
+        });
+      }
+    }
+
+    function drawCrash() {
+      // Discrete frames, solid colours and disappearing squares preserve the
+      // pixel-art look; there is no smooth transparency or blur.
+      const time = Math.floor(crash.elapsed / 45) * 45;
+      crash.pixels.forEach((pixel, index) => {
+        const age = Math.max(0, time - pixel.delay);
+        if (age >= pixel.life) return;
+        if (age > pixel.life * 0.65 && (Math.floor(time / 45) + index) % 3 === 0) return;
+        ctx.fillStyle = age < 90 ? '#f8f8d8' : age < 280 ? COLORS.yellow :
+          age < 480 ? '#e89838' : COLORS.red;
+        const seconds = age / 1000;
+        const x = Math.round((pixel.x + pixel.vx * seconds) / 2) * 2;
+        const y = Math.round((pixel.y + pixel.vy * seconds) / 2) * 2;
+        ctx.fillRect(x, y, 2, 2);
+      });
+    }
+
+    function drawInstruments() {
+      ctx.fillStyle = COLORS.panel;
+      ctx.fillRect(0, H, W, canvas.height - H);
+      pixelText(Math.floor(score), W / 2, H + 7, 4, 3, COLORS.yellow, true);
+      ctx.fillStyle = COLORS.ink;
+      ctx.fillRect(166, H + 27, 148, 29);
+      ctx.fillStyle = COLORS.panel;
+      ctx.fillRect(170, H + 31, 140, 21);
+      ctx.fillStyle = fuel < 25 ? COLORS.red : COLORS.yellow;
+      const needle = 170 + Math.round(Math.max(0, Math.min(100, fuel)) * 1.36 / 2) * 2;
+      ctx.fillRect(needle, H + 31, 4, 21);
+      pixelText('E', 177, H + 34, 3, 3, COLORS.ink);
+      pixelText('1/2', W / 2, H + 34, 3, 3, COLORS.ink, true);
+      pixelText('F', 295, H + 34, 3, 3, COLORS.ink);
+      pixelText('RIVER RAID', W / 2, H + 61, 2, 1, COLORS.yellow, true);
+    }
+
+    function draw() {
+      drawBackground();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H);
+      ctx.clip();
+      for (const container of fuels) drawFuel(container);
+      for (const box of ammoBoxes) drawAmmo(box);
+      for (const ship of ships) drawShip(ship);
+      drawShipExplosions();
+      ctx.fillStyle = COLORS.yellow;
+      for (const bullet of bullets) {
+        ctx.fillRect(Math.round(bullet.x / 2) * 2, Math.round(bullet.y / 2) * 2, bullet.w, bullet.h);
+      }
+      if (crash) drawCrash();
+      else if (!gameOver) drawPlane();
+      ctx.restore();
+      drawInstruments();
+      if (gameOver && !crash) drawGameOver(gameOverMessage);
+    }
+
+    function drawGameOver(message) {
+      ctx.fillStyle = COLORS.ink;
+      ctx.fillRect(62, 92, W - 124, 106);
+      ctx.fillStyle = COLORS.yellow;
+      ctx.fillRect(62, 92, W - 124, 2);
+      ctx.fillRect(62, 196, W - 124, 2);
+      pixelText('GAME OVER', W / 2, 108, 4, 3, COLORS.yellow, true);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ececd0';
+      ctx.font = 'bold 14px "Courier New", monospace';
+      ctx.fillText(message, W / 2, 149);
+      ctx.font = '12px "Courier New", monospace';
+      ctx.fillText('Odśwież stronę — nowy lot', W / 2, 177);
+    }
+
+    function loop(timestamp) {
+      const dt = Math.min(timestamp - lastTime, 50);
+      lastTime = timestamp;
+      update(dt);
+      draw();
+      if (!gameOver || crash) animationId = requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+      cancelAnimationFrame(animationId);
+      plane.x = W / 2 - plane.w / 2;
+      fuels = [];
+      ammoBoxes = [];
+      ships = [];
+      shipExplosions = [];
+      bullets = [];
+      fuel = 100;
+      ammo = 200;
+      score = 0;
+      gameOver = false;
+      gameOverMessage = '';
+      crash = null;
+      shootCooldown = 0;
+      worldDistance = 0;
+      keys.clear();
+      seedWorld();
+      updateHud();
+      lastTime = performance.now();
+      animationId = requestAnimationFrame(loop);
+    }
+
+    startGame();
+  </script>
+</body>
+</html>
