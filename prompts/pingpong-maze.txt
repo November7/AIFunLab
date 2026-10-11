@@ -85,3 +85,8 @@ Copilot chyba się zapętlił i obiecuje że wklei kod w następnym komunikacie.
 Github Copilot PRO
 16. popraw animację pingpong-maze.html. piłki przechodzą przez ściany (być może zbyt duża prędkość, ściana nie zdąży zareagować). wyjście prawie niemożliwe do osiągnięcią przez odbijające piłki. orginalne prompty znajdują się w prompts/pingpong-maze.txt.
 17. Podnieś cały labirynt bo nie mieści się na ekranie (50-100px powinno wystarczyć)
+
+
+Wersja 2 [PL] - GPT6 - Astra
+
+Popraw pingpong-maze.html (opis w prompts pingpong-maz.txt i pingpong-maze.jpg). Czasem kulki przeskakują przez ściany, labirynt jest brzydki, nie wygląda jak labirynt w kształcie koła, tylko jak losowe kreski. Zrób z tego coś fajniejszego i działającego poprawnie.

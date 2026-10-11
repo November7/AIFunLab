@@ -7,3 +7,9 @@ Wersja 1 [PL]:
 5. konieczne zmiany: można zestrzeliwać wszystko: paliwo okręty amunicję. amunicja powinna być okrągła, paliwo prostokąt pionowy. okręt prostokąt poziomy (może fajnie jakby wygladał jak okręt?). i najważniejsze 3 prędkości samolotu: strzałka do przodu fast, brak strzałek góra/dół normal i strzałka w dół: slow. samolot powinien być w stałym miejscu planszy na dole jakieś 50 px powyżej dolnej granicy.
 6. konieczne zmiany: przyciska nowa gra psuje grę - odświeżenie strony sprawia że gra jest ok. samolot leci za szybko, wszystkie prędkości należy zmniejszyć o połowę. Punkty za zestrzeliwanie: okręt 100, amunicja 50, paliwo 75. spawn wszystkiego jest za duży: okrętów o połowe mniej, paliwa 3x mniej amunicji 5x mniej
 7. popraw: bez buttona nowa gra, potrzebuję dodatkowo zmienić zużycie paliwa prędkość1 - bazowe zużycie, prędkość2 x2 zużycie, prędkosć3 x4 zużycie, na dole powinna być legenda
+
+Wersja 2 [PL] GPT-6 Astra:
+
+1. Przyjrzyj się grze riverride2.html - zmodyfikuj grę tak aby dostosować jej wygląd do oryginału. jeżeli potrzebujesz poszukaj, jak wyglądała oryginalna gra. Dodaj na dole info o zastosowanym modelu do utworzenia gry
+2. Paliwo działało tak że im dłużej przebywasz nad paliwem tym więcej zatankujesz - nie znika po dotknięciu. można też było zrobić tak że trochę podtankować i jeszcze zestrzelić to paliwo i dostać punkty. Szerokość rzeki była równa tzn. prawy brzeg był tak samo oddalony od lewego brzegu, zdarzały się też przewężenia i rozszerzenia a nawet rozgałęzienia na dwie drogi, które potem się zbiegały w całość.
+3. Obrazki z oryginalnej gry dla porównania.
