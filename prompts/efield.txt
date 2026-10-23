@@ -4,3 +4,12 @@ Wersja 1 [PL]
 2. ręczna modyfikacja ustawień linii pola.
 3. popraw działanie na urządzeniach mobilnych (przesuwanie obecnie nie działa prawidłowo)
 4. popraw działanie podwójnego kliknięcia (dotyku) na urządzeniach mobilnych - obecnie nie działa możliwosć zmiany "kierunku" prądu
+
+Wersja 2 [PL] - GPT6 - Astra:
+1. na podstawie promptu efield.txt i efield.html przygotuj efield2.html który poprawnie generuje linie pola wokół przewodnika. dodaj funkcjonalność ekranów dotykowych.
+
+Odp:
+W obecnej wersji krok Eulera zamienia zamknięte linie w spirale, a każdy dotyk od razu odwraca prąd. Poprawię oba mechanizmy i dodam regulację gęstości oraz wyglądu linii.
+Z opisu wynika, że chodzi o pole magnetyczne wokół przewodnika z prądem. Tak nazwę je w aplikacji i ustawię strzałki zgodnie z regułą prawej dłoni.
+Kod nowej wersji jest gotowy. Linie wyznaczam z funkcji strumienia, co usuwa spiralny dryf i uwzględnia sumowanie pól wielu przewodników. Obsługa dotyku rozróżnia stuknięcie, przeciąganie i podwójne stuknięcie. Teraz sprawdzę obliczenia, gesty i układ na małym ekranie.
+Dodałem też przycisk odwracania prądu, większy obszar trafienia palcem i blokadę nakładania przewodników. „Wyczyść” zostawia teraz pustą scenę również po zmianie rozmiaru okna. Trwa sprawdzanie kierunku pola, kształtu linii i zdarzeń dotykowych w przeglądarce.
