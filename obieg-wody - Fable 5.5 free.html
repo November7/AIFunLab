@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Obieg wody w przyrodzie – symulator</title>
+<style>
+:root{--ink:#12303f;--sea:#1f7a8c;--leaf:#3f8f5a;--bg:#e9f0f3;--line:#c9d8de}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:1100px;margin:0 auto;padding:12px}
+h1{font-size:1.5rem;margin:2px 0 10px}
+canvas{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line);background:#cfe3f0;touch-action:none}
+.cap{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:10px 0;font-size:1.1rem;line-height:1.45;min-height:3.6em}
+.cap b{color:var(--sea)}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:10px}
+.ctl{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.ctl label{display:flex;justify-content:space-between;font-weight:600;margin-bottom:10px;font-size:1.05rem}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:14px;border-radius:7px;background:var(--line);outline-offset:6px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:36px;height:36px;border-radius:50%;background:var(--sea);border:3px solid #fff;box-shadow:0 0 0 1px var(--sea)}
+input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--sea);border:3px solid #fff}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+button{font:inherit;font-weight:600;padding:12px 16px;min-height:48px;border-radius:10px;border:2px solid var(--sea);background:#fff;color:var(--ink);cursor:pointer}
+button:hover{background:#dff0f3}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+button.main{background:var(--sea);color:#fff}
+button[aria-pressed=true]{background:#dff0f3}
+button[aria-pressed=false]{background:#fff;border-style:dashed;opacity:.65}
+.meters{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.m{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:.92rem}
+.m .bar{height:10px;background:var(--line);border-radius:5px;margin:6px 0;overflow:hidden}
+.m .bar i{display:block;height:100%;background:var(--sea);width:0}
+.m strong{font-size:1.15rem}
+.note{font-size:.9rem;margin-top:8px;opacity:.8}
+@media(max-width:800px){.controls{grid-template-columns:1fr}.meters{grid-template-columns:repeat(2,1fr)}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main id="app">
+<h1>Obieg wody w przyrodzie</h1>
+<canvas id="c" width="960" height="540" aria-label="Przekrój krajobrazu: morze, góry, rzeka, las i chmury"></canvas>
+<div class="cap" id="cap" aria-live="polite"></div>
+
+<div class="controls">
+<div class="ctl"><label for="t">Temperatura <span id="tv"></span></label><input id="t" type="range" min="-10" max="40" value="12"></div>
+<div class="ctl"><label for="f">Zalesienie <span id="fv"></span></label><input id="f" type="range" min="0" max="100" value="50"></div>
+<div class="ctl"><label for="m">Wysokość gór <span id="mv"></span></label><input id="m" type="range" min="10" max="100" value="60"></div>
+</div>
+
+<div class="btns">
+<button class="main" id="bp">Pauza</button>
+<button id="bs">Tempo: ×1</button>
+<button id="ba">Strzałki: włączone</button>
+<button data-s="40,10,60">Upał i susza</button>
+<button data-s="-8,50,60">Epoka lodowa</button>
+<button data-s="12,0,60">Wycinka lasu</button>
+<button data-s="12,100,60">Zalesianie</button>
+<button data-s="12,50,60">Ustawienia domyślne</button>
+<button id="br">Zacznij od nowa</button>
+<button id="bf">Pełny ekran</button>
+</div>
+
+<div class="btns" id="arrowbtns" role="group" aria-label="Pokazywanie strzałek"></div>
+<div class="meters" id="meters"></div>
+<p class="note">Ilość wody w całym układzie jest stała (1000 jednostek) – woda nie ginie, tylko przemieszcza się między zbiornikami. Aktualna suma: <b id="sum"></b></p>
+</main>
+
+<script>
+const cv=document.getElementById('c'),g=cv.getContext('2d'),W=960,H=540,COAST=300,BASE=400,LAND=660;
+const P={temp:12,forest:50,mount:60,speed:1,paused:false,arrows:true,sh:{par:true,tra:true,opa:true,wsi:true,spl:true,top:true,pod:true}};
+let S,V,C,N,G,R;
+function reset(){S=800;V=20;C=20;N=30;G=60;R=60;pts.length=0}
+const pts=[];
+const trees=[];for(let i=0;i<80;i++)trees.push({t:.05+Math.random()*.62,r:Math.random(),s:.8+Math.random()*.5});
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const pk=()=>50+P.mount*2.7;
+function hgt(x){const t=(x-COAST)/LAND;let k=Math.pow(Math.sin(Math.min(t/.85,1)*Math.PI/2),2.2);if(t>.85)k*=1-.25*(t-.85)/.15;return 6+pk()*k}
+const ty=x=>BASE-hgt(x);
+const seaY=()=>392-(S-800)*.05;
+const cloud=()=>({x:700,y:Math.max(70,ty(700)-120),s:10+C*.45});
+
+let fl={ev:0,tr:0,pr:0,snow:0,rain:0,inf:.6,melt:0},dark=0,tick=0;
+function step(){
+ const T=P.temp,M=P.mount/100,F=P.forest/100;
+ const ev=S*.00004*Math.max(0,T+8);
+ const tr=G*F*.0006*Math.max(0,T+5);
+ const cond=V*.02*(.6+M);
+ const pr=C>25?(C-25)*.03:0;
+ const sf=T<0?1:M*clamp(.5-(T-20*M)/6,0,1)+(1-M)*clamp(.5-T/6,0,1);
+ const snow=pr*sf,rain=pr-snow,inf=.3+.6*F;
+ const melt=N*.004*Math.max(0,T-12*M+2);
+ const gr=G*.004,rv=R*.01;
+ S+=-ev+rv;V+=ev+tr-cond;C+=cond-pr;N+=snow-melt;
+ G+=rain*inf+melt*.2-tr-gr;R+=rain*(1-inf)+melt*.8+gr-rv;
+ return{ev,tr,pr,snow,rain,inf,melt};
+}
+
+function spawn(){
+ if(pts.length>700)return;
+ if(Math.random()<Math.min(1,fl.ev*.6))pts.push({k:'v',x:30+Math.random()*(COAST-50),y:seaY()});
+ if(Math.random()<Math.min(1,fl.tr*3)){const t=trees[(Math.random()*trees.length)|0];if(t.r<P.forest/100){const x=COAST+t.t*LAND;pts.push({k:'v',x,y:ty(x)-25})}}
+ const c=cloud();let n=fl.pr*3;
+ while(n>0){if(Math.random()<Math.min(1,n)){const s=Math.random()<fl.snow/(fl.pr||1);pts.push({k:s?'s':'r',x:c.x+(Math.random()-.5)*c.s*2.4,y:c.y+c.s*.4})}n--}
+}
+function move(){
+ const c=cloud();
+ for(let i=pts.length-1;i>=0;i--){const p=pts[i];
+  if(p.k==='v'){const dx=c.x-p.x,dy=c.y-p.y,d=Math.hypot(dx,dy);if(d<c.s){pts.splice(i,1);continue}p.x+=dx/d*1.5+Math.sin(p.y*.05)*.4;p.y+=dy/d*1.5}
+  else{p.y+=p.k==='r'?6:1.6;p.x+=p.k==='r'?-.4:Math.sin(p.y*.04)*.6;const gy=p.x<COAST?seaY():ty(p.x);if(p.y>=gy)pts.splice(i,1)}
+ }
+}
+
+function draw(){
+ const T=P.temp,F=P.forest/100;tick++;
+ let s=g.createLinearGradient(0,0,0,BASE);
+ s.addColorStop(0,`hsl(205,${clamp(35+T,20,75)}%,${clamp(80-T*.5,55,88)}%)`);s.addColorStop(1,'#e6f1f6');
+ g.fillStyle=s;g.fillRect(0,0,W,H);
+ // słońce
+ const sr=22+Math.max(0,T)*.5,sg=g.createRadialGradient(110,85,sr*.5,110,85,sr*3);
+ sg.addColorStop(0,T<0?'rgba(223,232,238,.9)':'rgba(242,182,50,.85)');sg.addColorStop(1,'rgba(255,255,255,0)');
+ g.fillStyle=sg;g.beginPath();g.arc(110,85,sr*3,0,7);g.fill();
+ g.fillStyle=T<0?'#dfe8ee':'#f2b632';g.beginPath();g.arc(110,85,sr,0,7);g.fill();
+ // morze
+ const sy=seaY(),sgd=g.createLinearGradient(0,sy,0,H);sgd.addColorStop(0,'#2a8fa6');sgd.addColorStop(1,'#0f4a5c');
+ g.fillStyle=sgd;g.beginPath();g.moveTo(0,H);
+ for(let x=0;x<=COAST+20;x+=8)g.lineTo(x,sy+Math.sin(x*.05+tick*.05)*2);
+ g.lineTo(COAST+20,H);g.fill();
+ if(T<-2){g.fillStyle='rgba(240,248,252,.75)';g.fillRect(0,sy-2,COAST+20,7)}
+ // ląd
+ const lg=g.createLinearGradient(0,130,0,H);
+ [[0,'#98a39c'],[.35,'#8aa070'],[.68,'#7ea65f'],[.7,'#6d5a44'],[1,'#54443a']].forEach(a=>lg.addColorStop(a[0],a[1]));
+ g.fillStyle=lg;g.beginPath();g.moveTo(COAST,H);g.lineTo(COAST,ty(COAST));
+ for(let x=COAST;x<=W;x+=6)g.lineTo(x,ty(x));g.lineTo(W,H);g.fill();
+ // woda gruntowa
+ g.fillStyle=`rgba(42,111,176,${Math.min(.8,G/220)})`;g.fillRect(COAST,472,W-COAST,H-472);
+ // śnieg
+ if(N>3){const hs=pk()*(1-Math.min(1,N/70));g.strokeStyle='#f6fafc';g.lineWidth=8;g.lineCap='round';g.beginPath();let on=false;
+  for(let x=COAST;x<=W;x+=6){if(hgt(x)>hs+6){on?g.lineTo(x,ty(x)-2):g.moveTo(x,ty(x)-2);on=true}else on=false}g.stroke()}
+ // rzeka
+ if(R>1){g.strokeStyle='#4aa3c4';g.lineWidth=1+R*.06;g.lineCap='round';g.beginPath();g.moveTo(COAST+LAND*.62,ty(COAST+LAND*.62)+1);
+  for(let x=COAST+LAND*.62;x>=COAST;x-=6)g.lineTo(x,ty(x)+1);g.stroke()}
+ // drzewa
+ for(const t of trees)if(t.r<F){const x=COAST+t.t*LAND,y=ty(x),h=26*t.s;
+  g.fillStyle='#6b4a2f';g.fillRect(x-2,y-h*.4,4,h*.4+2);g.fillStyle='#2f7d4a';g.beginPath();g.moveTo(x-10*t.s,y-h*.35);g.lineTo(x,y-h-4);g.lineTo(x+10*t.s,y-h*.35);g.fill()}
+ // chmura
+ const c=cloud();dark+=((fl.pr>.15?Math.min(90,fl.pr*120):0)-dark)*.05;const d=255-dark;
+ g.fillStyle=`rgb(${d},${d},${d-dark*.2})`;
+ [[-.9,.1,.7],[-.4,-.2,.85],[.2,-.3,1],[.8,0,.8],[.1,.2,.9],[-.5,.25,.7],[.55,.25,.65]].forEach(a=>{g.beginPath();g.arc(c.x+a[0]*c.s,c.y+a[1]*c.s,c.s*.65*a[2],0,7);g.fill()});
+ // cząstki
+ for(const p of pts){
+  if(p.k==='v'){g.fillStyle='rgba(31,122,140,.55)';g.beginPath();g.arc(p.x,p.y,2.6,0,7);g.fill()}
+  else if(p.k==='r'){g.strokeStyle='#2a6fb0';g.lineWidth=2;g.beginPath();g.moveTo(p.x,p.y);g.lineTo(p.x+1,p.y-9);g.stroke()}
+  else{g.fillStyle='#fff';g.strokeStyle='#8aa0ad';g.lineWidth=1;g.beginPath();g.arc(p.x,p.y,3,0,7);g.fill();g.stroke()}}
+ // podpisy
+ g.font='600 15px "Segoe UI",sans-serif';g.fillStyle='#12303f';
+ g.fillText('parowanie',90,sy-60);g.fillText('opady',c.x+c.s*1.2,c.y+c.s*1.3);
+ g.fillText('rzeka',COAST+LAND*.3,ty(COAST+LAND*.3)+22);
+ g.fillStyle='#fff';g.fillText('woda gruntowa',COAST+20,500);g.fillText('morze',110,sy+40);
+ if(P.arrows)arrows(sy,c);
+}
+
+function q(a,c,b,n){const r=[];for(let i=0;i<=n;i++){const t=i/n,u=1-t;r.push([u*u*a[0]+2*u*t*c[0]+t*t*b[0],u*u*a[1]+2*u*t*c[1]+t*t*b[1]])}return r}
+function arrow(p,col,w,a,txt,tx,tyy){
+ g.save();g.globalAlpha=clamp(a,.35,1);g.lineCap='round';g.lineJoin='round';
+ const path=()=>{g.beginPath();g.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)g.lineTo(p[i][0],p[i][1])};
+ g.setLineDash([]);path();g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=w+4;g.stroke();
+ g.setLineDash([12,8]);g.lineDashOffset=-tick*.6;path();g.strokeStyle=col;g.lineWidth=w;g.stroke();
+ g.setLineDash([]);
+ const e=p[p.length-1],s=p[p.length-3]||p[0],an=Math.atan2(e[1]-s[1],e[0]-s[0]),h=9+w*2;
+ g.fillStyle=col;g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=2;g.beginPath();
+ g.moveTo(e[0]+Math.cos(an)*h*.6,e[1]+Math.sin(an)*h*.6);
+ g.lineTo(e[0]+Math.cos(an+2.5)*h,e[1]+Math.sin(an+2.5)*h);
+ g.lineTo(e[0]+Math.cos(an-2.5)*h,e[1]+Math.sin(an-2.5)*h);g.closePath();g.stroke();g.fill();
+ if(txt){g.font='600 13px "Segoe UI",sans-serif';g.fillStyle=col;g.lineWidth=3;g.strokeStyle='rgba(255,255,255,.9)';g.strokeText(txt,tx,tyy);g.fillText(txt,tx,tyy)}
+ g.restore();
+}
+function arrows(sy,c){
+ const Fo=P.forest/100,X=f=>COAST+LAND*f;
+ // parowanie z morza i skraplanie w chmurze
+ if(P.sh.par)arrow(q([210,sy-14],[210,c.y+30],[c.x-c.s*1.3,c.y+c.s*.4],14),'#c4661a',4,.3+fl.ev*1.5,'skraplanie',c.x-c.s*1.3-78,c.y-8);
+ // transpiracja drzew
+ if(Fo>.05&&P.sh.tra)arrow(q([X(.38),ty(X(.38))-50],[X(.45),c.y+60],[c.x-c.s*.9,c.y+c.s*.7],12),'#2f7d4a',2+Fo*2,.3+fl.tr*3,'transpiracja',X(.3),ty(X(.38))-62);
+ // opady
+ const y0=c.y+c.s*1.05,y1=ty(c.x)-14;
+ if(P.sh.opa&&y1-y0>25)arrow([[c.x-c.s*1.5,y0],[c.x-c.s*1.5,y1]],'#1d4f91',4,.3+fl.pr*1.5);
+ // wsiąkanie
+ if(P.sh.wsi)arrow([[X(.15),ty(X(.15))+10],[X(.15),462]],'#1d4f91',3,.3+fl.rain*fl.inf*1.5,'wsiąkanie',X(.15)+12,430);
+ // spływ rzeką do morza
+ const rp=[];for(let x=X(.5);x>=COAST+30;x-=30)rp.push([x,ty(x)-16]);
+ if(P.sh.spl)arrow(rp,'#12607a',4,.3+(fl.rain*(1-fl.inf)+fl.melt*.8)*1.5,'spływ do morza',COAST+50,ty(COAST+50)-30);
+ // topnienie śniegu
+ if(N>3&&P.sh.top){const mp=[];for(let x=X(.82);x>=X(.66);x-=12)mp.push([x,ty(x)-18]);
+  arrow(mp,'#3b6ea5',3,.3+fl.melt*3,'topnienie',X(.7),ty(X(.7))-40)}
+ // odpływ wód podziemnych do morza
+ if(P.sh.pod)arrow([[COAST+250,525],[COAST-45,525]],'#12607a',3,.3+G/300,'odpływ podziemny',COAST+150,516);
+}
+const MET=[['Morze','S',1000],['Para w powietrzu','V',100],['Chmury','C',120],['Śnieg i lód','N',150],['Woda w glebie','G',250],['Rzeka','R',150]];
+const mel=document.getElementById('meters');
+mel.innerHTML=MET.map((m,i)=>`<div class="m">${m[0]}<div class="bar"><i id="b${i}"></i></div><strong id="n${i}"></strong></div>`).join('');
+function ui(){
+ const v={S,V,C,N,G,R};
+ MET.forEach((m,i)=>{document.getElementById('b'+i).style.width=clamp(v[m[1]]/m[2]*100,0,100)+'%';document.getElementById('n'+i).textContent=Math.round(v[m[1]])});
+ document.getElementById('sum').textContent=Math.round(S+V+C+N+G+R);
+ let a;
+ if(P.temp<-2)a='<b>Mróz:</b> morze prawie nie paruje, a opady spadają jako śnieg. Woda zostaje „zamrożona” w górach.';
+ else if(fl.pr>.15)a=fl.snow>fl.rain?'<b>Pada śnieg:</b> woda gromadzi się na szczytach jako zapas.':'<b>Pada deszcz:</b> woda wraca na ląd i do morza.';
+ else if(fl.ev>.3)a='<b>Parowanie:</b> słońce ogrzewa morze, a para wodna unosi się w górę.';
+ else a='<b>Skraplanie:</b> para wodna zamienia się w krople i tworzy chmurę. Gdy chmura urośnie, zacznie padać.';
+ a+=`<br>Gleba zatrzymuje ${Math.round(fl.inf*100)}% wody z opadów, reszta spływa rzeką do morza.`+(fl.melt>.3?' Topniejący śnieg zasila rzekę.':'');
+ document.getElementById('cap').innerHTML=a;
+ document.getElementById('tv').textContent=P.temp+' °C';document.getElementById('fv').textContent=P.forest+'%';document.getElementById('mv').textContent=P.mount+'%';
+}
+function frame(){
+ if(!P.paused){for(let i=0;i<3*P.speed;i++){const f=step();for(const k in f)fl[k]+=(f[k]-fl[k])*.05}spawn();move()}
+ draw();ui();requestAnimationFrame(frame);
+}
+const $=id=>document.getElementById(id);
+function setP(t,f,m){P.temp=+t;P.forest=+f;P.mount=+m;$('t').value=t;$('f').value=f;$('m').value=m}
+$('t').oninput=e=>P.temp=+e.target.value;$('f').oninput=e=>P.forest=+e.target.value;$('m').oninput=e=>P.mount=+e.target.value;
+document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>setP(...b.dataset.s.split(',')));
+$('bp').onclick=e=>{P.paused=!P.paused;e.target.textContent=P.paused?'Wznów':'Pauza'};
+$('bs').onclick=e=>{P.speed=P.speed===1?2:P.speed===2?4:1;e.target.textContent='Tempo: ×'+P.speed};
+$('br').onclick=reset;
+const AB=[['par','Parowanie i skraplanie'],['tra','Transpiracja'],['opa','Opady'],['wsi','Wsiąkanie'],['spl','Spływ rzeką'],['top','Topnienie śniegu'],['pod','Odpływ podziemny']];
+$('arrowbtns').innerHTML=AB.map(a=>`<button data-a="${a[0]}"></button>`).join('');
+function syncA(){
+ const on=AB.filter(a=>P.sh[a[0]]).length;
+ document.querySelectorAll('[data-a]').forEach(b=>{const k=b.dataset.a,o=!!P.sh[k];b.setAttribute('aria-pressed',o);b.textContent=AB.find(a=>a[0]===k)[1]+(o?': widać':': ukryte')});
+ $('ba').textContent='Strzałki: '+(on===AB.length?'wszystkie widoczne':on?'częściowo':'wszystkie ukryte');
+}
+document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{P.sh[b.dataset.a]=!P.sh[b.dataset.a];syncA()});
+$('ba').onclick=()=>{const v=!AB.some(a=>P.sh[a[0]]);AB.forEach(a=>P.sh[a[0]]=v);syncA()};
+syncA();
+$('bf').onclick=()=>{const a=$('app');document.fullscreenElement?document.exitFullscreen():(a.requestFullscreen&&a.requestFullscreen())};
+reset();frame();
+</script>
+</body>
+</html>
