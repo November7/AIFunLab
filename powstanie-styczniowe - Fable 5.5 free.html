@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Powstanie styczniowe – fiszki</title>
+<style>
+:root{
+  --board:#1d3b4f; --board-dark:#14293a; --frame:#8b5a2b; --frame-dark:#5e3a16;
+  --paper:#fffaf0; --ink:#1f2430; --string:#f2e9d8;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:"Trebuchet MS","Segoe UI",Verdana,sans-serif;
+  color:var(--ink); background:#3b2a1a; min-height:100vh; padding:14px;
+}
+.frame{
+  max-width:1280px; margin:0 auto; border:14px solid var(--frame);
+  border-radius:10px; box-shadow:inset 0 0 0 3px var(--frame-dark),0 10px 30px rgba(0,0,0,.5);
+  background:
+    radial-gradient(circle at 20% 15%,rgba(255,255,255,.07),transparent 40%),
+    radial-gradient(circle at 80% 85%,rgba(0,0,0,.25),transparent 45%),
+    var(--board);
+  padding:22px 22px 34px;
+}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-bottom:8px}
+h1{margin:0;color:#fff7e0;font-family:Georgia,"Times New Roman",serif;font-size:clamp(1.5rem,3.2vw,2.4rem);letter-spacing:.01em}
+.sub{margin:4px 0 0;color:#cfe0ea;font-size:1rem}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.count{color:#fff7e0;font-weight:bold;margin-right:6px}
+.tools button{
+  font:inherit;font-weight:bold;padding:9px 14px;border-radius:6px;border:2px solid #fff7e0;
+  background:transparent;color:#fff7e0;cursor:pointer;
+}
+.tools button:hover{background:#fff7e0;color:var(--board-dark)}
+button:focus-visible{outline:4px solid #ffd166;outline-offset:3px}
+
+.board{
+  list-style:none;margin:0;padding:0;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px 22px;
+}
+.slot{position:relative;padding-top:30px}
+.pin{position:absolute;top:0;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff,#d9d9d9 40%,#8d8d8d);box-shadow:0 2px 3px rgba(0,0,0,.5)}
+.string{position:absolute;top:8px;left:50%;width:2px;height:26px;margin-left:-1px;background:var(--string)}
+
+.card{
+  display:block;width:100%;height:270px;padding:0;border:0;background:none;cursor:pointer;
+  perspective:900px;transform:rotate(var(--r));transform-origin:50% 0;
+  transition:transform .35s ease;
+}
+.card:hover{transform:rotate(calc(var(--r) * -0.4))}
+.inner{position:relative;display:block;width:100%;height:100%;transform-style:preserve-3d;transition:transform .55s ease}
+.card[aria-pressed="true"] .inner{transform:rotateY(180deg)}
+.face{
+  position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;
+  padding:26px 18px 16px;border-radius:6px;text-align:center;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  box-shadow:0 8px 14px rgba(0,0,0,.4);
+}
+.face::before{ /* otwór na sznurek */
+  content:"";position:absolute;top:9px;left:50%;width:12px;height:12px;margin-left:-6px;
+  border-radius:50%;background:var(--board-dark);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)
+}
+.front{background:var(--c);font-size:1.18rem;font-weight:bold;line-height:1.35}
+.hint{position:absolute;bottom:10px;left:0;right:0;font-size:.8rem;font-weight:normal;opacity:.75}
+.back{
+  transform:rotateY(180deg);background:var(--paper);border-top:14px solid var(--c);
+  font-size:.98rem;line-height:1.45;text-align:left;justify-content:flex-start;overflow:auto;
+  padding-top:22px
+}
+.back::before{top:-2px}
+
+@media (prefers-reduced-motion:reduce){
+  .card,.inner{transition:none}
+}
+@media (max-width:520px){
+  body{padding:6px}.frame{padding:14px 12px 24px;border-width:10px}
+}
+</style>
+</head>
+<body>
+<div class="frame">
+  <header>
+    <div>
+      <h1>Powstanie styczniowe 1863–1864</h1>
+      <p class="sub">Kliknij kartkę lub dotknij jej, aby zobaczyć odpowiedź. Kliknij jeszcze raz, aby ją zakryć.</p>
+    </div>
+    <div class="tools">
+      <span class="count" id="count" aria-live="polite">Odkryte: 0 z 20</span>
+      <button type="button" id="showAll">Odkryj wszystkie</button>
+      <button type="button" id="hideAll">Zakryj wszystkie</button>
+      <button type="button" id="shuffle">Wymieszaj</button>
+    </div>
+  </header>
+  <ul class="board" id="board"></ul>
+</div>
+
+<script>
+const cards = [
+ {q:`Kiedy wybuchło powstanie styczniowe?`, a:`22 stycznia 1863 r. Tego dnia Komitet Centralny Narodowy ogłosił się Tymczasowym Rządem Narodowym i wezwał Polaków do walki. Główne walki trwały do 1864 r.`},
+ {q:`Z kim walczyli powstańcy i gdzie?`, a:`Z Rosją. Powstanie ogarnęło Królestwo Polskie (zabór rosyjski), a także Litwę, Białoruś i część Ukrainy.`},
+ {q:`Co to była branka?`, a:`Przymusowy pobór do armii rosyjskiej na wiele lat. Zaplanowano go na styczeń 1863 r. i miał objąć głównie młodych mężczyzn z miast, uznanych za patriotów.`},
+ {q:`Kto zarządzał branką w Królestwie Polskim?`, a:`Margrabia Aleksander Wielopolski, szef polskiej administracji cywilnej. Chciał rozbić konspirację, a tylko przyspieszył wybuch powstania.`},
+ {q:`Kim byli Czerwoni?`, a:`Radykalne stronnictwo, głównie młodzież, drobna szlachta i inteligencja z miast. Chcieli szybkiego powstania oraz ziemi dla chłopów.`},
+ {q:`Kim byli Biali?`, a:`Umiarkowani: ziemianie i zamożniejsza inteligencja. Woleli czekać i liczyli na pomoc mocarstw zachodnich. Gdy powstanie wybuchło, w końcu je poparli.`},
+ {q:`Co obiecywał powstańczy manifest z 22 stycznia 1863 r.?`, a:`Uwłaszczenie: chłopi mieli dostać na własność ziemię, którą uprawiali, a właściciele odszkodowanie z kasy narodowej. Manifest głosił też równość obywateli.`},
+ {q:`Jak walczyli powstańcy?`, a:`Metodą partyzancką: małymi oddziałami, z zasadzek, w lasach. W otwartej bitwie nie mieli szans z wielką armią rosyjską. Stoczono ponad tysiąc potyczek i bitew.`},
+ {q:`Kim byli kosynierzy?`, a:`Powstańcy uzbrojeni w kosy osadzone na sztorc, bo brakowało karabinów. Kosa była tania i łatwa do zdobycia, ale słabo sprawdzała się przeciw karabinom.`},
+ {q:`Kim był Ludwik Mierosławski?`, a:`Pierwszym dyktatorem powstania (luty 1863). Po przegranych bitwach na początku marca 1863 r. opuścił kraj.`},
+ {q:`Kim był Marian Langiewicz?`, a:`Dowódcą, który w marcu 1863 r. ogłosił się dyktatorem. Wygrał bitwę pod Miechowem, ale po porażce pod Grochowiskami przeszedł do Austrii, gdzie go internowano.`},
+ {q:`Kim była Anna Henryk Pustowójtówna?`, a:`Kobietą, która przebrana za mężczyznę walczyła w powstaniu pod pseudonimem „Michał Smok”. Była adiutantem Mariana Langiewicza.`},
+ {q:`Kim był Romuald Traugutt?`, a:`Ostatnim dyktatorem powstania, byłym oficerem armii rosyjskiej. Jesienią 1863 r. uporządkował władze powstania. Aresztowany w kwietniu 1864 r., został stracony 5 sierpnia 1864 r. w Warszawie.`},
+ {q:`Kim byli Konstanty Kalinowski i Michaił Murawjow?`, a:`Kalinowski kierował powstaniem na Litwie i Białorusi, wydawał pismo dla chłopów po białorusku. Został stracony w Wilnie w 1865 r. Murawjow, rosyjski generał, krwawo tłumił powstanie na Litwie, nazywano go „Wieszatielem”.`},
+ {q:`Co ustaliły Prusy i Rosja w konwencji Alvenslebena (luty 1863)?`, a:`Że będą współdziałać przeciw powstańcom. Rosyjskie wojska mogły ścigać oddziały polskie blisko granicy pruskiej, a powstańcy mieli utrudniony dostęp do broni.`},
+ {q:`Czy państwa Zachodu pomogły powstańcom?`, a:`Nie. Wielka Brytania, Francja i Austria wysyłały Rosji tylko noty dyplomatyczne i protesty. Żadne państwo nie wysłało wojska, co było jedną z głównych przyczyn klęski.`},
+ {q:`Jaką rolę odegrała Galicja (zabór austriacki)?`, a:`Była zapleczem powstania: wielu mieszkańców pomagało powstańcom, zbierano pieniądze i opatrunki, przez granicę szli ochotnicy i przenoszono broń. Oficjalnie władze austriackie zachowywały neutralność.`},
+ {q:`Jak odpowiedział car na obietnice powstańców dla chłopów?`, a:`Ukazem z 2 marca 1864 r. uwłaszczył chłopów w Królestwie Polskim. Chciał odebrać powstaniu poparcie wsi i rzeczywiście wielu chłopów pozostało biernych.`},
+ {q:`Jakie były skutki klęski powstania?`, a:`Egzekucje, tysiące zesłanych na Syberię, konfiskaty majątków. Zlikwidowano resztki autonomii, Królestwo przemianowano na Kraj Nadwiślański, a język rosyjski wprowadzono do urzędów i szkół.`},
+ {q:`Kim był Artur Grottger?`, a:`Malarzem i rysownikiem z Galicji. Cykle rysunków „Warszawa”, „Lituania” i „Polonia” pokazują losy powstańców i ich rodzin. Utrwaliły pamięć o powstaniu.`}
+];
+const colors=["#ffd166","#ff9f8a","#7fd8be","#8ecae6","#c3a6ff","#ffb86b","#b5e48c","#f4a6d7"];
+const tilts=[-2.2,1.4,-1,2.1,-1.6,0.9,-2,1.7];
+const board=document.getElementById("board"), count=document.getElementById("count");
+let order=cards.map((_,i)=>i);
+
+function render(){
+  board.innerHTML="";
+  order.forEach((idx,pos)=>{
+    const c=cards[idx], li=document.createElement("li"); li.className="slot";
+    li.innerHTML='<span class="pin"></span><span class="string"></span>'+
+      '<button type="button" class="card" aria-pressed="false">'+
+      '<span class="inner"><span class="face front"><span></span><span class="hint">kliknij, aby odkryć</span></span>'+
+      '<span class="face back"></span></span></button>';
+    const btn=li.querySelector(".card");
+    btn.style.setProperty("--r",tilts[pos%tilts.length]+"deg");
+    btn.style.setProperty("--c",colors[idx%colors.length]);
+    btn.querySelector(".front span").textContent=c.q;
+    btn.querySelector(".back").textContent=c.a;
+    btn.addEventListener("click",()=>{
+      btn.setAttribute("aria-pressed",btn.getAttribute("aria-pressed")==="true"?"false":"true"); update();
+    });
+    board.appendChild(li);
+  });
+  update();
+}
+function update(){
+  const n=board.querySelectorAll('.card[aria-pressed="true"]').length;
+  count.textContent="Odkryte: "+n+" z "+cards.length;
+}
+function setAll(v){board.querySelectorAll(".card").forEach(b=>b.setAttribute("aria-pressed",v));update();}
+document.getElementById("showAll").onclick=()=>setAll("true");
+document.getElementById("hideAll").onclick=()=>setAll("false");
+document.getElementById("shuffle").onclick=()=>{
+  for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+  render();
+};
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Test z „Balladyny” – klasa 7</title>
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #202b3c;
+      background: #f1f5f9;
+      font-synthesis: none;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px 14px 40px;
+    }
+
+    main {
+      width: min(820px, 100%);
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 20px;
+      padding: 26px clamp(18px, 5vw, 36px);
+      border-radius: 16px;
+      background: #183b56;
+      color: white;
+      box-shadow: 0 5px 18px #183b5622;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.6rem, 5vw, 2.2rem);
+      line-height: 1.2;
+    }
+
+    header p {
+      margin: 5px 0 0;
+      color: #e2edf5;
+    }
+
+    #result {
+      position: sticky;
+      z-index: 2;
+      top: 8px;
+      margin: 0 0 16px;
+      padding: 13px 18px;
+      border: 2px solid #cbd5e1;
+      border-radius: 12px;
+      background: #fff;
+      text-align: center;
+      font-size: 1.15rem;
+      font-weight: 700;
+      box-shadow: 0 3px 12px #0f172a14;
+    }
+
+    #result.finished {
+      border-color: #183b56;
+    }
+
+    .question {
+      margin: 0 0 20px;
+    }
+
+    .question-title {
+      margin: 0;
+      width: 100%;
+      font-size: 1.04rem;
+      font-weight: 650;
+      line-height: 1.45;
+    }
+
+    .answers {
+      margin: 12px 0 0;
+      padding: 10px;
+      border: 1px solid #d5deea;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 2px 8px #0f172a0a;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .number {
+      color: #17608a;
+      font-weight: 800;
+    }
+
+    .level {
+      display: inline-block;
+      margin: 0 0 11px 8px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #e8f1f8;
+      color: #244b64;
+      font-size: 0.75rem;
+      font-weight: 650;
+      vertical-align: 2px;
+    }
+
+    .option {
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      gap: 11px;
+      margin-top: 0;
+      padding: 10px 12px;
+      border: 1px solid #d9e1eb;
+      border-radius: 9px;
+      background: #fff;
+      cursor: pointer;
+      line-height: 1.35;
+      touch-action: manipulation;
+    }
+
+    .option + .option {
+      margin-top: 7px;
+    }
+
+    .option:hover {
+      border-color: #5685a3;
+      background: #f7fafc;
+    }
+
+    .option input {
+      width: 21px;
+      height: 21px;
+      flex: 0 0 auto;
+      margin: 0;
+      accent-color: #17608a;
+      cursor: pointer;
+    }
+
+    .option.correct {
+      border-color: #26834a;
+      background: #e3f5e9;
+      color: #15552d;
+    }
+
+    .option.incorrect {
+      border-color: #c43d3d;
+      background: #fde8e8;
+      color: #7e2020;
+    }
+
+    .option input:disabled {
+      cursor: default;
+    }
+
+    .submit-area {
+      padding: 8px 0 20px;
+      text-align: center;
+    }
+
+    button {
+      min-height: 54px;
+      padding: 13px 24px;
+      border: 0;
+      border-radius: 10px;
+      background: #17608a;
+      color: white;
+      font: inherit;
+      font-size: 1.05rem;
+      font-weight: 750;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:hover {
+      background: #10496b;
+    }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid #f0ad3d;
+      outline-offset: 3px;
+    }
+
+    button:disabled {
+      background: #64748b;
+      cursor: default;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 12px 10px 28px;
+      }
+
+      .answers {
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Test z „Balladyny”</h1>
+      <p>Juliusz Słowacki · klasa 7 szkoły podstawowej</p>
+      <p>W każdym pytaniu zaznacz jedną odpowiedź. Powodzenia!</p>
+    </header>
+
+    <div id="result" role="status" aria-live="polite">Wynik pojawi się po zakończeniu testu</div>
+    <form id="quiz" autocomplete="off"></form>
+    <div class="submit-area">
+      <button id="submit" type="button">Zatwierdź odpowiedzi</button>
+    </div>
+  </main>
+
+  <script>
+    "use strict";
+
+    const questions = [
+      {
+        level: "Podstawowe",
+        text: "Kto jest autorem dramatu „Balladyna”?",
+        options: ["Adam Mickiewicz", "Juliusz Słowacki", "Aleksander Fredro", "Henryk Sienkiewicz"]
+      },
+      {
+        level: "Podstawowe",
+        text: "Do jakiego rodzaju utworów należy „Balladyna”?",
+        options: ["Do komedii", "Do powieści przygodowych", "Do baśni", "Do tragedii"]
+      },
+      {
+        level: "Podstawowe",
+        text: "Która z sióstr jest tytułową bohaterką utworu?",
+        options: ["Balladyna", "Alina", "Goplana", "Wdowa"]
+      },
+      {
+        level: "Podstawowe",
+        text: "Nad jakim jeziorem rozgrywa się część wydarzeń dramatu?",
+        options: ["Nad Śniardwami", "Nad Jeziorem Genezaret", "Nad Gopłem", "Nad Morskim Okiem"]
+      },
+      {
+        level: "Podstawowe",
+        text: "Jak nazywa się matka Balladyny i Aliny?",
+        options: ["Wdowa", "Kirkorowa", "Pustelnica", "Grażyna"]
+      },
+      {
+        level: "Średnie",
+        text: "Co mają zbierać siostry, aby rozstrzygnąć, którą z nich poślubi Kirkor?",
+        options: ["Grzyby", "Kwiaty", "Jabłka", "Maliny"]
+      },
+      {
+        level: "Podstawowe",
+        text: "Co robi Balladyna podczas zbierania malin?",
+        options: ["Oddaje Alinie swój koszyk", "Zabija Alinę", "Ucieka do zamku", "Prosi Goplanę o pomoc"]
+      },
+      {
+        level: "Średnie",
+        text: "Jaki ślad pojawia się na czole Balladyny po zabójstwie Aliny?",
+        options: ["Złota korona", "Czarna plama", "Krwawa plama", "Blizna w kształcie krzyża"]
+      },
+      {
+        level: "Średnie",
+        text: "Kim jest Pustelnik, który udziela Kirkorowi rad?",
+        options: ["Dawnym sługą Kirkora", "Przywódcą wojsk", "Ojcem Aliny", "Wygnanym królem Popielem III"]
+      },
+      {
+        level: "Podstawowe",
+        text: "W kim zakochana jest nimfa Goplana?",
+        options: ["W Grabcu", "W Kirkorze", "W Kostrynie", "W Pustelniku"]
+      },
+      {
+        level: "Średnie",
+        text: "Co najlepiej opisuje główną motywację Balladyny w dalszej części dramatu?",
+        options: ["Chęć powrotu do wiejskiego życia", "Pragnienie odnalezienia siostry", "Dążenie do władzy i usuwanie przeszkód", "Zamiar pomocy Pustelnikowi"]
+      },
+      {
+        level: "Podstawowe",
+        text: "Która cecha najlepiej odróżnia Alinę od Balladyny?",
+        options: ["Alina jest władcza i bezwzględna", "Alina jest życzliwa i szczera", "Alina nie zna swojej matki", "Alina pragnie zostać królową"]
+      },
+      {
+        level: "Średnie",
+        text: "Z kim Balladyna zawiera sojusz, który pomaga jej w walce o władzę?",
+        options: ["Z Kostrynem", "Z Grabcem", "Z Pustelnikiem", "Ze Skierką"]
+      },
+      {
+        level: "Wyzwanie",
+        text: "Jaką karę ponosi Balladyna za swoje zbrodnie?",
+        options: ["Ucieka z kraju", "Zostaje wygnana przez Kirkora", "Oddaje władzę Alinie", "Ginie rażona piorunem"]
+      },
+      {
+        level: "Wyzwanie",
+        text: "Co podkreśla finał dramatu, gdy Balladyna wydaje wyroki jako władczyni?",
+        options: ["Władczyni może unikać każdej odpowiedzialności", "Balladyna rozpoznaje i naprawia wszystkie krzywdy", "Wydaje wyrok na samą siebie, choć nie rozpoznaje własnych win", "Goplana przejmuje władzę w królestwie"]
+      },
+      {
+        level: "Średnie",
+        text: "W jakim otoczeniu żyją początkowo Balladyna, Alina i ich matka?",
+        options: ["W królewskim zamku", "W ubogiej chacie", "W klasztorze", "W obozie wojskowym"]
+      },
+      {
+        level: "Wyzwanie",
+        text: "Który element łączy świat realistyczny z fantastycznym w dramacie?",
+        options: ["Wyprawa Kirkora do miasta", "Zbiór malin", "Spór o tron", "Obecność Goplany i jej pomocników"]
+      },
+      {
+        level: "Wyzwanie",
+        text: "Co robi Balladyna, gdy jej matka przybywa do zamku?",
+        options: ["Wypiera się matki i każe ją odprawić", "Prosi ją, by została królową", "Oddaje jej cały majątek", "Przedstawia ją jako swoją siostrę"]
+      },
+      {
+        level: "Średnie",
+        text: "Co przypomina Balladynie o popełnionej zbrodni?",
+        options: ["Złoty pierścień Aliny", "Krwawa plama na czole", "List od Kirkora", "Złamana gałąź"]
+      },
+      {
+        level: "Wyzwanie",
+        text: "Jaki ważny wniosek wynika z zakończenia dramatu?",
+        options: ["Władza zawsze przynosi szczęście", "O winie decyduje wyłącznie pochodzenie", "Zbrodnia i niesprawiedliwość prowadzą do kary", "Fantastyczne postacie rozwiązują każdy problem"]
+      }
+    ];
+
+    const quiz = document.getElementById("quiz");
+    const result = document.getElementById("result");
+    const submitButton = document.getElementById("submit");
+
+    questions.forEach((question, questionIndex) => {
+      const questionCard = document.createElement("section");
+      questionCard.className = "question";
+
+      const heading = document.createElement("h2");
+      heading.className = "question-title";
+      const number = document.createElement("span");
+      number.className = "number";
+      number.textContent = `${questionIndex + 1}. `;
+      heading.append(number, document.createTextNode(question.text));
+
+      const level = document.createElement("span");
+      level.className = "level";
+      level.textContent = question.level;
+      heading.appendChild(level);
+      questionCard.appendChild(heading);
+
+      const answers = document.createElement("fieldset");
+      answers.className = "answers";
+      const answerLegend = document.createElement("legend");
+      answerLegend.className = "visually-hidden";
+      answerLegend.textContent = `Odpowiedzi do pytania ${questionIndex + 1}`;
+      answers.appendChild(answerLegend);
+
+      question.options.forEach((option, optionIndex) => {
+        const label = document.createElement("label");
+        label.className = "option";
+
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = `question-${questionIndex}`;
+        radio.value = String(optionIndex);
+
+        const text = document.createElement("span");
+        text.textContent = option;
+        label.append(radio, text);
+        answers.appendChild(label);
+      });
+
+      questionCard.appendChild(answers);
+      quiz.appendChild(questionCard);
+    });
+
+    submitButton.addEventListener("click", () => {
+      if (submitButton.disabled) return;
+
+      const unanswered = questions.reduce((count, _, index) => {
+        return count + (quiz.querySelector(`input[name="question-${index}"]:checked`) ? 0 : 1);
+      }, 0);
+
+      const confirmation = unanswered > 0
+        ? `Nie zaznaczono odpowiedzi w ${unanswered} ${unanswered === 1 ? "pytaniu" : "pytaniach"}. Czy na pewno chcesz zakończyć test?`
+        : "Czy na pewno chcesz zakończyć test? Po zatwierdzeniu nie będzie można zmienić odpowiedzi.";
+
+      if (!window.confirm(confirmation)) return;
+
+      let correctCount = 0;
+      const answerKey = "acaeadafadaeacafaeadafacadaeafacaeadacaf";
+
+      questions.forEach((_, questionIndex) => {
+        const correctIndex = parseInt(answerKey.slice(questionIndex * 2, questionIndex * 2 + 2), 16) ^ 173;
+        const selected = quiz.querySelector(`input[name="question-${questionIndex}"]:checked`);
+        if (selected && Number(selected.value) === correctIndex) correctCount += 1;
+
+        const radios = quiz.querySelectorAll(`input[name="question-${questionIndex}"]`);
+        radios.forEach((radio, optionIndex) => {
+          radio.disabled = true;
+          const label = radio.closest(".option");
+          if (optionIndex === correctIndex) label.classList.add("correct");
+          else if (radio.checked) label.classList.add("incorrect");
+        });
+      });
+
+      const percentage = Math.round((correctCount / questions.length) * 100);
+      result.textContent = `Wynik: ${percentage}% (${correctCount} z ${questions.length} poprawnych odpowiedzi)`;
+      result.classList.add("finished");
+      submitButton.disabled = true;
+    });
+  </script>
+</body>
+</html>
